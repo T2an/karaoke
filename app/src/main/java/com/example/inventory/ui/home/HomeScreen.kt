@@ -16,6 +16,7 @@
 
 package com.example.inventory.ui.home
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -50,9 +53,13 @@ import androidx.compose.ui.unit.dp
 import com.example.inventory.InventoryTopAppBar
 import com.example.inventory.R
 import com.example.inventory.data.Item
+import com.example.inventory.data.PlaylistItem
 import com.example.inventory.ui.item.formatedPrice
 import com.example.inventory.ui.navigation.NavigationDestination
 import com.example.inventory.ui.theme.InventoryTheme
+import com.example.inventory.util.PlaylistParser
+import kotlinx.coroutines.launch
+import java.util.Collections
 
 object HomeDestination : NavigationDestination {
     override val route = "home"
@@ -109,6 +116,20 @@ private fun HomeBody(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
+    val url = "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
+    val playlistParser = PlaylistParser()
+
+    val coroutineScope = rememberCoroutineScope()
+    var playlistItems = Collections.emptyList<PlaylistItem>()
+    val key = 0
+
+    LaunchedEffect(key) {
+        coroutineScope.launch {
+            playlistItems = playlistParser.parsePlaylist(url)
+            Log.i("DEBUG", playlistItems.toString())
+        }
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier,

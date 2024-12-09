@@ -49,6 +49,10 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
     buildFeatures {
         compose = true
     }
@@ -74,6 +78,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("androidx.navigation:navigation-compose:2.7.5")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
+    implementation("io.ktor:ktor-client-core:3.0.2")
+    implementation("io.ktor:ktor-client-cio:3.0.2")
 
     //Room
     implementation("androidx.room:room-runtime:${rootProject.extra["room_version"]}")
