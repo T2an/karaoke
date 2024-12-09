@@ -5,12 +5,12 @@ import com.example.inventory.data.PlaylistItem
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.adapter
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import java.net.URL
 import java.util.Collections
 
 /**
@@ -29,7 +29,7 @@ class PlaylistParser {
             response = client.get(url)
             Log.i("DEBUG", response.bodyAsText())
 
-            val moshiBuilder: Moshi = Moshi.Builder().build()
+            val moshiBuilder: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
             val playlistItemAdapter: JsonAdapter<List<PlaylistItem>> = moshiBuilder.adapter<List<PlaylistItem>>()
 
             return playlistItemAdapter.fromJson(response.bodyAsText())!!
