@@ -1,6 +1,12 @@
 package com.example.inventory.util
 
+import android.util.Log
 import com.example.inventory.data.Song
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.request.get
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 
 /**
  * Util class for music parsing
@@ -10,8 +16,22 @@ class MusicParser {
     /**
      * Parse a string into a Song object
      */
-    fun parseSong(input: String): Song {
-        val lines = input.lines()
+    suspend fun parseSong(url: String): Song? {
+        val client = HttpClient(CIO)
+        var response: HttpResponse? = null
+        try {
+            response = client.get(url)
+            Log.i("DEBUG", response.bodyAsText())
+
+        } catch(e: Exception) {
+            e.message?.let { Log.i("DEBUG", it) }
+        } finally {
+            client.close()
+        }
+
+        if (response == null) return null
+
+        val lines = response.bodyAsText().lines()
         var title = ""
         var author = ""
         var soundtrack = ""
