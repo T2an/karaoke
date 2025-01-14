@@ -71,8 +71,6 @@ object HomeDestination : NavigationDestination {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    navigateToItemEntry: () -> Unit,
-    navigateToItemUpdate: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -100,7 +98,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = navigateToItemEntry,
+                onClick = { },
                 modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_large))
             ) {
                 Icon(
@@ -112,7 +110,7 @@ fun HomeScreen(
     ) { innerPadding ->
         HomeBody(
             playlistItems = playlistItems,
-            onItemClick = navigateToItemUpdate,
+            onItemClick = {  },
             modifier = modifier.fillMaxSize(),
             contentPadding = innerPadding,
         )
