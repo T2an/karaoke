@@ -16,6 +16,7 @@
 
 package com.example.inventory.ui.home
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -65,11 +66,15 @@ import com.squareup.moshi.adapter
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.launch
 import java.util.Collections
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 object HomeDestination : NavigationDestination {
     override val route = "home"
     override val titleRes = R.string.app_name
 }
+
+
 
 /**
  * Entry route for Home screen
@@ -77,6 +82,7 @@ object HomeDestination : NavigationDestination {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalStdlibApi::class)
 @Composable
 fun HomeScreen(
+    onNavigateToKaraoke: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -130,7 +136,7 @@ fun HomeScreen(
     ) { innerPadding ->
         HomeBody(
             playlistItems = playlistItems,
-            onItemClick = {  },
+            onItemClick = { musicPath -> onNavigateToKaraoke(musicPath) },
             modifier = modifier.fillMaxSize(),
             contentPadding = innerPadding,
         )
@@ -158,13 +164,17 @@ private fun HomeBody(
         } else {
             PlaylistItems(
                 itemList = playlistItems,
-                onItemClick = { onItemClick(it.name) },
+                onItemClick = { item ->
+                    // Utilisation de 'item.path' au lieu de 'item.name'
+                    onItemClick(item.path?.let { URLEncoder.encode(it, StandardCharsets.UTF_8.toString()) } ?: "")
+                },
                 contentPadding = contentPadding,
                 modifier = Modifier.padding(horizontal = dimensionResource(id = R.dimen.padding_small))
             )
         }
     }
 }
+
 
 @Composable
 private fun PlaylistItems(
@@ -173,31 +183,38 @@ private fun PlaylistItems(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Text(
-        text = stringResource(R.string.subtitle),
-        textAlign = TextAlign.Center,
-        style = MaterialTheme.typography.titleLarge,
-        modifier = Modifier.padding()
-    )
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = contentPadding
-    ) {
-        items(items = itemList, key = { it.name }) { item ->
-            PlaylistItem(item = item,
-                modifier = Modifier
-                    .padding(dimensionResource(id = R.dimen.padding_small))
-                    .clickable { onItemClick(item) })
+    Column(modifier = modifier) {
+        Text(
+            text = stringResource(R.string.subtitle),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding()
+        )
+        LazyColumn(
+            contentPadding = contentPadding
+        ) {
+            items(items = itemList, key = { it.name }) { item ->
+                PlaylistItem(
+                    item = item,
+                    modifier = Modifier
+                        .padding(dimensionResource(id = R.dimen.padding_small)),
+                    onClick = onItemClick
+                )
+            }
         }
     }
 }
 
+
 @Composable
 private fun PlaylistItem(
-    item: PlaylistItem, modifier: Modifier = Modifier
+    item: PlaylistItem,
+    modifier: Modifier = Modifier,
+    onClick: (PlaylistItem) -> Unit
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier
+            .clickable { onClick(item) },
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -243,7 +260,11 @@ fun HomeBodyEmptyListPreview() {
 fun PlaylistItemPreview() {
     InventoryTheme {
         PlaylistItem(
-            PlaylistItem("Bohemian Rhapsody", "Queen", false, path = ""),
+            item = PlaylistItem("Bohemian Rhapsody", "Queen", false, path = ""),
+            onClick = { clickedItem ->
+                println("Clicked on: ${clickedItem.name} by ${clickedItem.artist}")
+            }
         )
     }
 }
+

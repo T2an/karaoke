@@ -60,14 +60,20 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.example.inventory.InventoryTopAppBar
 import com.example.inventory.R
 import com.example.inventory.data.Song
+import com.example.inventory.ui.navigation.NavigationDestination
 import com.example.inventory.ui.theme.InventoryTheme
 import com.example.inventory.util.MusicParser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Entry route for Home screen
- */
+object KaraokeDestination : NavigationDestination {
+    override val route: String = "karaoke_screen/{musicPath}"
+    override val titleRes: Int = R.string.karaoke_screen_title
+
+    const val musicPathArg = "musicPath"
+}
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KaraokeScreen(
@@ -76,7 +82,7 @@ fun KaraokeScreen(
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    val url = "${stringResource(R.string.base_url)}/${musicPath}.md"
+    val url = "${stringResource(R.string.base_url)}/${musicPath}"
     val musicParser = MusicParser()
 
     val coroutineScope = rememberCoroutineScope()

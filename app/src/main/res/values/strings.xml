@@ -38,4 +38,5 @@
     <string name="required_fields">*required fields</string>
     <string name="base_url">https://gcpa-enssat-24-25.s3.eu-west-3.amazonaws.com</string>
     <string name="playlist_file">playlist.json</string>
+    <string name="karaoke_screen_title">Karaoke Player</string>
 </resources>

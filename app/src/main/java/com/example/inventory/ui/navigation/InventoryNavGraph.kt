@@ -1,32 +1,21 @@
-/*
- * Copyright (C) 2023 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.example.inventory.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.inventory.ui.home.HomeDestination
 import com.example.inventory.ui.home.HomeScreen
+import com.example.inventory.ui.karaoke.KaraokeScreen
+import com.example.inventory.ui.karaoke.KaraokeDestination
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
-/**
- * Provides Navigation graph for the application.
- */
+
 @Composable
 fun InventoryNavHost(
     navController: NavHostController,
@@ -38,7 +27,27 @@ fun InventoryNavHost(
         modifier = modifier
     ) {
         composable(route = HomeDestination.route) {
-            HomeScreen()
+            HomeScreen(
+                onNavigateToKaraoke = { musicPath ->
+                    // Naviguer vers la destination Karaoke en injectant la valeur du musicPath
+                    navController.navigate("karaoke_screen/$musicPath") // Utiliser la bonne syntaxe ici
+                }
+            )
         }
+
+        composable(
+            route = KaraokeDestination.route,
+            arguments = listOf(
+                navArgument(KaraokeDestination.musicPathArg) { type = NavType.StringType }
+            )
+        ) { backStackEntry: NavBackStackEntry ->
+            val musicPath = backStackEntry.arguments?.getString(KaraokeDestination.musicPathArg)
+            val decodedPath = musicPath?.let { URLDecoder.decode(it, StandardCharsets.UTF_8.toString()) }
+
+            if (decodedPath != null) {
+                KaraokeScreen(musicPath = decodedPath)
+            }
+        }
+
     }
 }
