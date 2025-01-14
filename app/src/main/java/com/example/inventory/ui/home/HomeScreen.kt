@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +58,11 @@ import com.example.inventory.data.PlaylistItem
 import com.example.inventory.ui.navigation.NavigationDestination
 import com.example.inventory.ui.theme.InventoryTheme
 import com.example.inventory.util.PlaylistParser
+import com.example.inventory.util.PreferencesManager
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.adapter
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.launch
 import java.util.Collections
 
@@ -68,23 +74,37 @@ object HomeDestination : NavigationDestination {
 /**
  * Entry route for Home screen
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalStdlibApi::class)
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    val url = "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
-    val playlistParser = PlaylistParser()
+    val context = LocalContext.current
+    val preferencesManager = remember { PreferencesManager(context) }
 
-    val coroutineScope = rememberCoroutineScope()
+    val moshiBuilder: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+    val playlistItemAdapter: JsonAdapter<List<PlaylistItem>> = moshiBuilder.adapter<List<PlaylistItem>>()
 
     var playlistItems: List<PlaylistItem> by remember { mutableStateOf(Collections.emptyList()) }
-    LaunchedEffect(Unit) {
-        coroutineScope.launch {
-            playlistItems = playlistParser.parsePlaylist(url)
+
+    val playlistItemsString: String? = preferencesManager.getData("playlistItems")
+    if (playlistItemsString.isNullOrBlank()) {
+        val url = "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
+        val playlistParser = PlaylistParser()
+
+        val coroutineScope = rememberCoroutineScope()
+
+        LaunchedEffect(Unit) {
+            coroutineScope.launch {
+                playlistItems = playlistParser.parsePlaylist(url)
+
+                preferencesManager.saveData("playlistItems", playlistItemAdapter.toJson(playlistItems))
+            }
         }
+    } else {
+        playlistItems = playlistItemAdapter.fromJson(playlistItemsString)!!
     }
 
     Scaffold(
