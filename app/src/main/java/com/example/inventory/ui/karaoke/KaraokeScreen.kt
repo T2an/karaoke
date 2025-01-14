@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,17 +23,22 @@ import androidx.compose.material.icons.Icons.Filled
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,17 +48,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import com.example.inventory.InventoryTopAppBar
 import com.example.inventory.R
 import com.example.inventory.data.Song
-import com.example.inventory.ui.home.HomeDestination
 import com.example.inventory.ui.theme.InventoryTheme
 import com.example.inventory.util.MusicParser
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -83,8 +93,9 @@ fun KaraokeScreen(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             InventoryTopAppBar(
-                title = stringResource(HomeDestination.titleRes),
-                canNavigateBack = false,
+                // TODO : Ne marche pas
+                title = "Karaoké Player",
+                canNavigateBack = true,
                 scrollBehavior = scrollBehavior
             )
         }
@@ -246,6 +257,92 @@ fun KaraokeSimpleTextAnimate(duration: Int, text: String) {
     KaraokeSimpleText(text, karaokeAnimation.value)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AudioPlayer(mediaItemUrl: String) {
+    // État pour gérer le temps courant et la durée
+    var currentPosition by remember { mutableLongStateOf(0L) }
+    var totalDuration by remember { mutableLongStateOf(0L) }
+    var isPlaying by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+
+    // ExoPlayer
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(mediaItemUrl))
+            prepare()
+            addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (state == Player.STATE_READY) {
+                        totalDuration = duration
+                    }
+                }
+            })
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Karaoké Player") }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Affichage des Lyrics ou autre UI basée sur le timestamp
+            Text(text = "Current Position: ${currentPosition / 1000}s")
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Slider pour afficher ou changer la position
+            Slider(
+                value = currentPosition.toFloat() / totalDuration,
+                onValueChange = { value ->
+                    val newPosition = (value * totalDuration).toLong()
+                   // exoPlayer.seekTo(newPosition)
+                    currentPosition = newPosition
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Bouton Play / Pause
+            Button (onClick = {
+                if (isPlaying) {
+                  exoPlayer.pause()
+                } else {
+                  exoPlayer.play()
+                }
+                isPlaying = !isPlaying
+            }) {
+                Text(if (isPlaying) "Pause" else "Play")
+            }
+        }
+
+        // Mise à jour régulière de l'UI
+        LaunchedEffect(Unit) {
+            while (true) {
+                currentPosition = exoPlayer.currentPosition
+                delay(500) // Mise à jour toutes les 500ms
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun KaraokeSimpleTextPreview() {
@@ -292,6 +389,16 @@ fun KaraokeBodyPreview() {
             ),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(all = 2.dp),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AudioPlayerPreview() {
+    InventoryTheme {
+        AudioPlayer(
+            mediaItemUrl = "https://gcpa-enssat-24-25.s3.eu-west-3.amazonaws.com/Creep/creep.mp3"
         )
     }
 }
