@@ -84,6 +84,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-exoplayer-dash:1.5.1")
     implementation("androidx.media3:media3-ui:1.5.1")
+    implementation("androidx.compose.material:material-icons-extended:1.7.6")
 
     // Testing
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

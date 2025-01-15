@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,17 +20,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons.Filled
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -73,6 +70,7 @@ object KaraokeDestination : NavigationDestination {
     const val musicPathArg = "musicPath"
 }
 
+lateinit var audioPlayer: ExoPlayer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,16 +80,58 @@ fun KaraokeScreen(
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    val url = "${stringResource(R.string.base_url)}/${musicPath}"
+    val musicUrl = "${stringResource(R.string.base_url)}/${musicPath}"
     val musicParser = MusicParser()
 
     val coroutineScope = rememberCoroutineScope()
-    val key = 0
+
+    // État pour gérer le temps courant et la durée
+    var currentPosition by remember { mutableLongStateOf(0L) }
+    var totalDuration by remember { mutableLongStateOf(0L) }
+
+    val context = LocalContext.current
 
     var song: Song? by remember { mutableStateOf(null) }
-    LaunchedEffect(key) {
+
+    audioPlayer = ExoPlayer.Builder(context).build()
+
+    var isPlayerInitialized by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
         coroutineScope.launch {
-            song = musicParser.parseSong(url)
+            song = musicParser.parseSong(musicUrl)
+            isPlayerInitialized = true
+        }
+    }
+
+    if (isPlayerInitialized && song != null) {
+        val soundtrackUrl = "${stringResource(R.string.base_url)}/${musicPath.split("/")[0]}/${song?.soundtrack}"
+        // Init ExoPlayer
+        audioPlayer = remember {
+            ExoPlayer.Builder(context).build().apply {
+                setMediaItem(MediaItem.fromUri(soundtrackUrl))
+                prepare()
+                addListener(object : Player.Listener {
+                    override fun onPlaybackStateChanged(state: Int) {
+                        if (state == Player.STATE_READY) {
+                            totalDuration = duration
+                        }
+                    }
+                })
+            }
+        }
+        audioPlayer.play()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            audioPlayer.release()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentPosition = audioPlayer.currentPosition
+            delay(500) // Mise à jour toutes les 500ms
         }
     }
 
@@ -99,11 +139,13 @@ fun KaraokeScreen(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             InventoryTopAppBar(
-                // TODO : Ne marche pas
                 title = "Karaoké Player",
                 canNavigateBack = true,
                 scrollBehavior = scrollBehavior
             )
+        },
+        bottomBar = {
+            KaraokeActionButtons()
         }
     ) { innerPadding ->
         KaraokeBody(
@@ -126,7 +168,8 @@ fun KaraokeBody(
     ) {
         if (song == null) {
             Text(
-                text = stringResource(R.string.no_item_description),
+                // TODO : Utiliser des ressources partout
+                text = "Chargement de la musique en cours...",
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(contentPadding),
@@ -137,7 +180,6 @@ fun KaraokeBody(
                 current = 0,
                 progress = 0.0f
             )
-            KaraokeActionButtons()
         }
     }
 }
@@ -145,7 +187,7 @@ fun KaraokeBody(
 @Composable
 fun KaraokeActionButtons() {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(PaddingValues(20.dp)),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         OutlinedIconButton(
@@ -160,15 +202,22 @@ fun KaraokeActionButtons() {
             )
         }
         OutlinedIconButton(
-            onClick = { play() },
+            onClick = { playOrPause() },
             modifier = Modifier.size(50.dp),
             shape = CircleShape,
             border = BorderStroke(1.dp, Color.Black),
         ) {
-            Icon(
-                imageVector = Filled.PlayArrow,
-                contentDescription = stringResource(R.string.back_button)
-            )
+            if (audioPlayer.isPlaying) {
+                Icon(
+                    imageVector = Filled.Pause,
+                    contentDescription = stringResource(R.string.back_button)
+                )
+            } else {
+                Icon(
+                    imageVector = Filled.PlayArrow,
+                    contentDescription = stringResource(R.string.back_button)
+                )
+            }
         }
         OutlinedIconButton(
             onClick = { replay() },
@@ -185,15 +234,21 @@ fun KaraokeActionButtons() {
 }
 
 fun goBack() {
-    // TODO
+    audioPlayer.release()
+    // TODO : Navigate to HomeScreen
 }
 
-fun play() {
-    // TODO
+fun playOrPause() {
+    if (audioPlayer.isPlaying) {
+        audioPlayer.pause()
+    } else {
+        audioPlayer.play()
+    }
 }
 
 fun replay() {
-    // TODO
+    audioPlayer.seekTo(0)
+    audioPlayer.playWhenReady = true
 }
 
 @Composable
@@ -219,6 +274,7 @@ fun KaraokeText(list: List<String>, current: Int, progress: Float) {
 @Composable
 fun KaraokeSimpleText(text: String, progress: Float) {
     var textWidth by remember { mutableIntStateOf(0) }
+    var visibleChars by remember { mutableIntStateOf(text.length) }
 
     Box {
         Text(
@@ -227,17 +283,14 @@ fun KaraokeSimpleText(text: String, progress: Float) {
             modifier = Modifier
                 .onSizeChanged { size ->
                     textWidth = size.width
+                    visibleChars = (text.length * progress).toInt()
                 }
         )
 
-        // TODO : Le texte est mal coupé
         Text(
-            text = text,
+            text = text.take(visibleChars),
             color = Color.Black,
             maxLines = 1,
-            modifier = Modifier
-                .width((textWidth * progress).pxToDp())
-                .height(24.dp)
         )
 
         Canvas(
@@ -261,92 +314,6 @@ fun KaraokeSimpleTextAnimate(duration: Int, text: String) {
         karaokeAnimation.animateTo(1f, tween(duration, easing = LinearEasing))
     }
     KaraokeSimpleText(text, karaokeAnimation.value)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AudioPlayer(mediaItemUrl: String) {
-    // État pour gérer le temps courant et la durée
-    var currentPosition by remember { mutableLongStateOf(0L) }
-    var totalDuration by remember { mutableLongStateOf(0L) }
-    var isPlaying by remember { mutableStateOf(false) }
-
-    val context = LocalContext.current
-
-    // ExoPlayer
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(mediaItemUrl))
-            prepare()
-            addListener(object : Player.Listener {
-                override fun onPlaybackStateChanged(state: Int) {
-                    if (state == Player.STATE_READY) {
-                        totalDuration = duration
-                    }
-                }
-            })
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            exoPlayer.release()
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Karaoké Player") }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            // Affichage des Lyrics ou autre UI basée sur le timestamp
-            Text(text = "Current Position: ${currentPosition / 1000}s")
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Slider pour afficher ou changer la position
-            Slider(
-                value = currentPosition.toFloat() / totalDuration,
-                onValueChange = { value ->
-                    val newPosition = (value * totalDuration).toLong()
-                   // exoPlayer.seekTo(newPosition)
-                    currentPosition = newPosition
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Bouton Play / Pause
-            Button (onClick = {
-                if (isPlaying) {
-                  exoPlayer.pause()
-                } else {
-                  exoPlayer.play()
-                }
-                isPlaying = !isPlaying
-            }) {
-                Text(if (isPlaying) "Pause" else "Play")
-            }
-        }
-
-        // Mise à jour régulière de l'UI
-        LaunchedEffect(Unit) {
-            while (true) {
-                currentPosition = exoPlayer.currentPosition
-                delay(500) // Mise à jour toutes les 500ms
-            }
-        }
-    }
 }
 
 @Preview(showBackground = true)
@@ -395,16 +362,6 @@ fun KaraokeBodyPreview() {
             ),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(all = 2.dp),
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AudioPlayerPreview() {
-    InventoryTheme {
-        AudioPlayer(
-            mediaItemUrl = "https://gcpa-enssat-24-25.s3.eu-west-3.amazonaws.com/Creep/creep.mp3"
         )
     }
 }

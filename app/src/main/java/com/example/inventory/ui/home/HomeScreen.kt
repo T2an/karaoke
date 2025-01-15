@@ -16,7 +16,7 @@
 
 package com.example.inventory.ui.home
 
-import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -162,11 +162,21 @@ private fun HomeBody(
                 modifier = Modifier.padding(contentPadding),
             )
         } else {
+            val context = LocalContext.current
+
             PlaylistItems(
                 itemList = playlistItems,
                 onItemClick = { item ->
-                    // Utilisation de 'item.path' au lieu de 'item.name'
-                    onItemClick(item.path?.let { URLEncoder.encode(it, StandardCharsets.UTF_8.toString()) } ?: "")
+                    if (item.path.isNullOrBlank()) {
+                        Toast.makeText(
+                            context,
+                            "Cette musique n'est pas disponible pour le karaoké",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        // Utilisation de 'item.path' au lieu de 'item.name'
+                        onItemClick(item.path.let { URLEncoder.encode(it, StandardCharsets.UTF_8.toString()) } ?: "")
+                    }
                 },
                 contentPadding = contentPadding,
                 modifier = Modifier.padding(horizontal = dimensionResource(id = R.dimen.padding_small))
