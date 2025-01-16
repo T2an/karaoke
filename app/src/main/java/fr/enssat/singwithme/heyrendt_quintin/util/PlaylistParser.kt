@@ -1,7 +1,7 @@
-package com.example.inventory.util
+package fr.enssat.singwithme.heyrendt_quintin.util
 
 import android.util.Log
-import com.example.inventory.data.PlaylistItem
+import fr.enssat.singwithme.heyrendt_quintin.data.PlaylistItem
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.adapter

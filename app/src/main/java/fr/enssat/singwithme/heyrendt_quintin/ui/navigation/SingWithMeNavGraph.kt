@@ -1,4 +1,4 @@
-package com.example.inventory.ui.navigation
+package fr.enssat.singwithme.heyrendt_quintin.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -6,10 +6,10 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.inventory.ui.home.HomeDestination
-import com.example.inventory.ui.home.HomeScreen
-import com.example.inventory.ui.karaoke.KaraokeScreen
-import com.example.inventory.ui.karaoke.KaraokeDestination
+import fr.enssat.singwithme.heyrendt_quintin.ui.home.HomeDestination
+import fr.enssat.singwithme.heyrendt_quintin.ui.home.HomeScreen
+import fr.enssat.singwithme.heyrendt_quintin.ui.karaoke.KaraokeScreen
+import fr.enssat.singwithme.heyrendt_quintin.ui.karaoke.KaraokeDestination
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import java.net.URLDecoder
@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets
 
 
 @Composable
-fun InventoryNavHost(
+fun SingWithMeNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
 ) {

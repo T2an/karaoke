@@ -1,4 +1,4 @@
-package com.example.inventory.data
+package fr.enssat.singwithme.heyrendt_quintin.data
 
 /**
  *

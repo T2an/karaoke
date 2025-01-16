@@ -13,20 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package fr.enssat.singwithme.heyrendt_quintin.ui.theme
 
-package com.example.inventory.ui.navigation
+import androidx.compose.foundation.shape.CutCornerShape
+import androidx.compose.material3.Shapes
+import androidx.compose.ui.unit.dp
 
-/**
- * Interface to describe the navigation destinations for the app
- */
-interface NavigationDestination {
-    /**
-     * Unique name to define the path for a composable
-     */
-    val route: String
+val Shapes = Shapes(
 
-    /**
-     * String resource id to that contains title to be displayed for the screen.
-     */
-    val titleRes: Int
-}
+    extraSmall = CutCornerShape(topEnd = 8.dp, bottomStart = 8.dp),
+    small = CutCornerShape(topEnd = 8.dp, bottomStart = 8.dp),
+    medium = CutCornerShape(topEnd = 16.dp, bottomStart = 16.dp)
+)

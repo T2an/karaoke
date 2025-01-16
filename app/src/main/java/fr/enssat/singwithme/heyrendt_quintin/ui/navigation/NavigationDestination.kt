@@ -14,8 +14,19 @@
  * limitations under the License.
  */
 
-package com.example.inventory
+package fr.enssat.singwithme.heyrendt_quintin.ui.navigation
 
-import android.app.Application
+/**
+ * Interface to describe the navigation destinations for the app
+ */
+interface NavigationDestination {
+    /**
+     * Unique name to define the path for a composable
+     */
+    val route: String
 
-class InventoryApplication : Application()
+    /**
+     * String resource id to that contains title to be displayed for the screen.
+     */
+    val titleRes: Int
+}

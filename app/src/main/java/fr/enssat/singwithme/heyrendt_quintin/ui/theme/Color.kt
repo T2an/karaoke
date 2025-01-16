@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.inventory.ui.theme
+package fr.enssat.singwithme.heyrendt_quintin.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

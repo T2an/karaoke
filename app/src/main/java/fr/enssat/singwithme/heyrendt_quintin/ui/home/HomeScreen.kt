@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.inventory.ui.home
+package fr.enssat.singwithme.heyrendt_quintin.ui.home
 
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -53,17 +53,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.inventory.InventoryTopAppBar
-import com.example.inventory.R
-import com.example.inventory.data.PlaylistItem
-import com.example.inventory.ui.navigation.NavigationDestination
-import com.example.inventory.ui.theme.InventoryTheme
-import com.example.inventory.util.PlaylistParser
-import com.example.inventory.util.PreferencesManager
+import fr.enssat.singwithme.heyrendt_quintin.R
+import fr.enssat.singwithme.heyrendt_quintin.data.PlaylistItem
+import fr.enssat.singwithme.heyrendt_quintin.ui.navigation.NavigationDestination
+import fr.enssat.singwithme.heyrendt_quintin.ui.theme.SingWithMeTheme
+import fr.enssat.singwithme.heyrendt_quintin.util.PlaylistParser
+import fr.enssat.singwithme.heyrendt_quintin.util.PreferencesManager
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.adapter
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import fr.enssat.singwithme.heyrendt_quintin.SingWithMeTopAppBar
 import kotlinx.coroutines.launch
 import java.util.Collections
 import java.net.URLEncoder
@@ -116,7 +116,7 @@ fun HomeScreen(
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            InventoryTopAppBar(
+            SingWithMeTopAppBar(
                 title = stringResource(HomeDestination.titleRes),
                 canNavigateBack = false,
                 scrollBehavior = scrollBehavior
@@ -249,7 +249,7 @@ private fun PlaylistItem(
 @Preview(showBackground = true)
 @Composable
 fun HomeBodyPreview() {
-    InventoryTheme {
+    SingWithMeTheme {
         HomeBody(listOf(
             PlaylistItem("Bohemian Rhapsody", "Queen", false, path = ""),
             PlaylistItem("Creep", "Radiohead", false, path = ""),
@@ -260,7 +260,7 @@ fun HomeBodyPreview() {
 @Preview(showBackground = true)
 @Composable
 fun HomeBodyEmptyListPreview() {
-    InventoryTheme {
+    SingWithMeTheme {
         HomeBody(listOf(), onItemClick = {})
     }
 }
@@ -268,7 +268,7 @@ fun HomeBodyEmptyListPreview() {
 @Preview(showBackground = true)
 @Composable
 fun PlaylistItemPreview() {
-    InventoryTheme {
+    SingWithMeTheme {
         PlaylistItem(
             item = PlaylistItem("Bohemian Rhapsody", "Queen", false, path = ""),
             onClick = { clickedItem ->

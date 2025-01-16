@@ -1,4 +1,4 @@
-package com.example.inventory.util
+package fr.enssat.singwithme.heyrendt_quintin.util
 
 import android.content.Context
 import android.content.SharedPreferences

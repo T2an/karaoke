@@ -1,7 +1,7 @@
-package com.example.inventory.util
+package fr.enssat.singwithme.heyrendt_quintin.util
 
 import android.util.Log
-import com.example.inventory.data.Song
+import fr.enssat.singwithme.heyrendt_quintin.data.Song
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get

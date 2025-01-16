@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.inventory
+package fr.enssat.singwithme.heyrendt_quintin
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -23,20 +23,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.example.inventory.ui.theme.InventoryTheme
+import fr.enssat.singwithme.heyrendt_quintin.ui.theme.SingWithMeTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            InventoryTheme {
+            SingWithMeTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    InventoryApp()
+                    SingWithMeApp()
                 }
             }
         }

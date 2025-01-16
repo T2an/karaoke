@@ -1,4 +1,4 @@
-package com.example.inventory.ui.karaoke
+package fr.enssat.singwithme.heyrendt_quintin.ui.karaoke
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
@@ -57,12 +57,12 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import com.example.inventory.InventoryTopAppBar
-import com.example.inventory.R
-import com.example.inventory.data.Song
-import com.example.inventory.ui.navigation.NavigationDestination
-import com.example.inventory.ui.theme.InventoryTheme
-import com.example.inventory.util.MusicParser
+import fr.enssat.singwithme.heyrendt_quintin.R
+import fr.enssat.singwithme.heyrendt_quintin.SingWithMeTopAppBar
+import fr.enssat.singwithme.heyrendt_quintin.data.Song
+import fr.enssat.singwithme.heyrendt_quintin.ui.navigation.NavigationDestination
+import fr.enssat.singwithme.heyrendt_quintin.ui.theme.SingWithMeTheme
+import fr.enssat.singwithme.heyrendt_quintin.util.MusicParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -144,7 +144,7 @@ fun KaraokeScreen(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 
         topBar = {
-            InventoryTopAppBar(
+            SingWithMeTopAppBar(
                 title = "Karaoké Player",
                 canNavigateBack = true,
                 scrollBehavior = scrollBehavior
@@ -330,7 +330,7 @@ fun Float.pxToDp() = with(LocalDensity.current) { this@pxToDp.toDp() }
 @Preview(showBackground = true)
 @Composable
 fun KaraokeSimpleTextPreview() {
-    InventoryTheme {
+    SingWithMeTheme {
         KaraokeSimpleText(
             text = "I'm a creep, I'm a weirdo",
             progress = 0.40f
@@ -341,7 +341,7 @@ fun KaraokeSimpleTextPreview() {
 @Preview(showBackground = true)
 @Composable
 fun KaraokeTextPreview() {
-    InventoryTheme {
+    SingWithMeTheme {
         KaraokeText(
             list = listOf(
                 "You're so fuckin' special",

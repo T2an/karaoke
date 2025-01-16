@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.inventory.ui.theme
+package fr.enssat.singwithme.heyrendt_quintin.ui.theme
 
 import android.app.Activity
 import android.os.Build
@@ -95,7 +95,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun InventoryTheme(
+fun SingWithMeTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     // Dynamic color in this app is turned off for learning purposes
