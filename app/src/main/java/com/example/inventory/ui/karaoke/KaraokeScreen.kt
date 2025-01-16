@@ -1,6 +1,7 @@
 package com.example.inventory.ui.karaoke
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons.Filled
 import androidx.compose.material.icons.filled.ArrowBack
@@ -60,7 +63,7 @@ import com.example.inventory.data.Song
 import com.example.inventory.ui.navigation.NavigationDestination
 import com.example.inventory.ui.theme.InventoryTheme
 import com.example.inventory.util.MusicParser
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 object KaraokeDestination : NavigationDestination {
@@ -71,6 +74,7 @@ object KaraokeDestination : NavigationDestination {
 }
 
 lateinit var audioPlayer: ExoPlayer
+lateinit var karaokeAnimation: Animatable<Float, AnimationVector1D>
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +91,6 @@ fun KaraokeScreen(
 
     // État pour gérer le temps courant et la durée
     var currentPosition by remember { mutableLongStateOf(0L) }
-    var totalDuration by remember { mutableLongStateOf(0L) }
 
     val context = LocalContext.current
 
@@ -103,6 +106,9 @@ fun KaraokeScreen(
         }
     }
 
+    var currentLine by remember { mutableIntStateOf(0) }
+    karaokeAnimation = remember { Animatable(0f) }
+
     if (isPlayerInitialized && song != null) {
         val soundtrackUrl = "${stringResource(R.string.base_url)}/${musicPath.split("/")[0]}/${song?.soundtrack}"
         // Init ExoPlayer
@@ -111,15 +117,21 @@ fun KaraokeScreen(
                 setMediaItem(MediaItem.fromUri(soundtrackUrl))
                 prepare()
                 addListener(object : Player.Listener {
-                    override fun onPlaybackStateChanged(state: Int) {
-                        if (state == Player.STATE_READY) {
-                            totalDuration = duration
+                    override fun onEvents(player: Player, events: Player.Events) {
+                        if (events.contains(Player.EVENT_TIMELINE_CHANGED)) {
+                            currentPosition = player.currentPosition
                         }
                     }
                 })
             }
         }
         audioPlayer.play()
+
+        LaunchedEffect(currentLine) {
+            karaokeAnimation.snapTo(0f)
+            karaokeAnimation.animateTo(1f, tween(3000, easing = LinearEasing))
+            currentLine += 1
+        }
     }
 
     DisposableEffect(Unit) {
@@ -128,15 +140,9 @@ fun KaraokeScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            currentPosition = audioPlayer.currentPosition
-            delay(500) // Mise à jour toutes les 500ms
-        }
-    }
-
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+
         topBar = {
             InventoryTopAppBar(
                 title = "Karaoké Player",
@@ -150,6 +156,8 @@ fun KaraokeScreen(
     ) { innerPadding ->
         KaraokeBody(
             song = song,
+            karaokeAnimation = karaokeAnimation,
+            currentLine = currentLine,
             modifier = modifier.fillMaxSize(),
             contentPadding = innerPadding,
         )
@@ -159,26 +167,27 @@ fun KaraokeScreen(
 @Composable
 fun KaraokeBody(
     song: Song?,
+    karaokeAnimation: Animatable<Float, AnimationVector1D>,
+    currentLine: Int,
     modifier: Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier,
+        modifier = modifier.padding(contentPadding),
     ) {
         if (song == null) {
             Text(
                 // TODO : Utiliser des ressources partout
                 text = "Chargement de la musique en cours...",
                 textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(contentPadding),
+                style = MaterialTheme.typography.titleLarge
             )
         } else {
             KaraokeText(
                 list = song.lyrics,
-                current = 0,
-                progress = 0.0f
+                current = currentLine,
+                progress = karaokeAnimation.value
             )
         }
     }
@@ -186,6 +195,8 @@ fun KaraokeBody(
 
 @Composable
 fun KaraokeActionButtons() {
+    val scope = rememberCoroutineScope()
+
     Row(
         modifier = Modifier.fillMaxWidth().padding(PaddingValues(20.dp)),
         horizontalArrangement = Arrangement.SpaceEvenly
@@ -202,7 +213,7 @@ fun KaraokeActionButtons() {
             )
         }
         OutlinedIconButton(
-            onClick = { playOrPause() },
+            onClick = { playOrPause(scope) },
             modifier = Modifier.size(50.dp),
             shape = CircleShape,
             border = BorderStroke(1.dp, Color.Black),
@@ -238,11 +249,18 @@ fun goBack() {
     // TODO : Navigate to HomeScreen
 }
 
-fun playOrPause() {
+fun playOrPause(scope: CoroutineScope) {
     if (audioPlayer.isPlaying) {
         audioPlayer.pause()
+        scope.launch {
+            karaokeAnimation.stop()
+        }
     } else {
         audioPlayer.play()
+        scope.launch {
+            karaokeAnimation.snapTo(karaokeAnimation.value)
+            karaokeAnimation.animateTo(1f, tween(3000, easing = LinearEasing))
+        }
     }
 }
 
@@ -253,8 +271,10 @@ fun replay() {
 
 @Composable
 fun KaraokeText(list: List<String>, current: Int, progress: Float) {
-    Column {
-        list.forEachIndexed { index, text ->
+    LazyColumn(
+        contentPadding = PaddingValues(5.dp)
+    )  {
+        itemsIndexed(items = list, key = { index, _ -> index }) { index, text ->
             if (index != current) {
                 Text(
                     text = text,
@@ -289,7 +309,7 @@ fun KaraokeSimpleText(text: String, progress: Float) {
 
         Text(
             text = text.take(visibleChars),
-            color = Color.Black,
+            color = Color.Gray,
             maxLines = 1,
         )
 
@@ -306,15 +326,6 @@ fun KaraokeSimpleText(text: String, progress: Float) {
 
 @Composable
 fun Float.pxToDp() = with(LocalDensity.current) { this@pxToDp.toDp() }
-
-@Composable
-fun KaraokeSimpleTextAnimate(duration: Int, text: String) {
-    val karaokeAnimation = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        karaokeAnimation.animateTo(1f, tween(duration, easing = LinearEasing))
-    }
-    KaraokeSimpleText(text, karaokeAnimation.value)
-}
 
 @Preview(showBackground = true)
 @Composable
@@ -340,28 +351,6 @@ fun KaraokeTextPreview() {
             ),
             current = 2,
             progress = 0.5f
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun KaraokeBodyPreview() {
-    InventoryTheme {
-        KaraokeBody(
-            song = Song(
-                "Creep",
-                "Radiohead",
-                "creep.mp3",
-                lyrics = listOf(
-                    "You're so fuckin' special",
-                    "I wish I was special",
-                    "I'm a creep, I'm a weirdo",
-                    "What the hell am I doing here?"
-                )
-            ),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(all = 2.dp),
         )
     }
 }
