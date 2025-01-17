@@ -64,6 +64,7 @@ import fr.enssat.singwithme.heyrendt_quintin.ui.navigation.NavigationDestination
 import fr.enssat.singwithme.heyrendt_quintin.ui.theme.SingWithMeTheme
 import fr.enssat.singwithme.heyrendt_quintin.util.MusicParser
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 object KaraokeDestination : NavigationDestination {
@@ -109,6 +110,8 @@ fun KaraokeScreen(
     var currentLine by remember { mutableIntStateOf(0) }
     karaokeAnimation = remember { Animatable(0f) }
 
+    var isPlayerPlaying by remember { mutableStateOf(false) }
+
     if (isPlayerInitialized && song != null) {
         val soundtrackUrl = "${stringResource(R.string.base_url)}/${musicPath.split("/")[0]}/${song?.soundtrack}"
         // Init ExoPlayer
@@ -122,15 +125,28 @@ fun KaraokeScreen(
                             currentPosition = player.currentPosition
                         }
                     }
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        if (isPlaying) isPlayerPlaying = true
+                    }
                 })
             }
         }
         audioPlayer.play()
 
-        LaunchedEffect(currentLine) {
-            karaokeAnimation.snapTo(0f)
-            karaokeAnimation.animateTo(1f, tween(3000, easing = LinearEasing))
-            currentLine += 1
+        if (isPlayerPlaying) {
+            LaunchedEffect(currentLine) {
+                val startTime = song!!.lyricSegments[currentLine].startTime.toLong()
+                val delay = if(currentLine == 0) {
+                    startTime
+                } else {
+                    song!!.lyricSegments[currentLine + 1].startTime.toLong() - (startTime + song!!.lyricSegments[currentLine].duration.toLong())
+                }
+                delay(delay * 1000)
+
+                karaokeAnimation.snapTo(0f)
+                karaokeAnimation.animateTo(1f, tween(song!!.lyricSegments[currentLine].duration.toInt() * 1000, easing = LinearEasing))
+                currentLine += 1
+            }
         }
     }
 

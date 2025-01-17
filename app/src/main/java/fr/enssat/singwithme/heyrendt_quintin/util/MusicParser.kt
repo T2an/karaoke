@@ -1,6 +1,7 @@
 package fr.enssat.singwithme.heyrendt_quintin.util
 
 import android.util.Log
+import fr.enssat.singwithme.heyrendt_quintin.data.LyricSegment
 import fr.enssat.singwithme.heyrendt_quintin.data.Song
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -35,7 +36,7 @@ class MusicParser {
         var title = ""
         var author = ""
         var soundtrack = ""
-        val lyrics = mutableListOf<String>()
+        val rawLyrics = mutableListOf<String>()
 
         var isLyricsSection = false
         var i = 0
@@ -54,11 +55,53 @@ class MusicParser {
                     soundtrack = lines[i]
                 }
                 lines[i].startsWith("# lyrics") -> isLyricsSection = true
-                isLyricsSection -> lyrics.add(lines[i])
+                isLyricsSection -> rawLyrics.add(lines[i])
             }
             i++
         }
 
-        return Song(title, author, soundtrack, lyrics)
+        val lyricSegments = parseLyrics(rawLyrics)
+        val lyrics = lyricSegments.map { t -> t.text }
+
+        return Song(title, author, soundtrack, lyrics, lyricSegments)
     }
+}
+
+fun parseLyrics(rawLyrics: List<String>): List<LyricSegment> {
+    val regex = Regex("\\{\\s*(\\d+:\\d+(\\.\\d+)?)\\s*\\}([^\\{]*)(\\{\\s*(\\d+:\\d+(\\.\\d+)?)\\s*\\})?")
+    // Regex pour extraire timestamps et texte
+
+    val segments = mutableListOf<LyricSegment>()
+
+    val allMatches = rawLyrics.flatMap { regex.findAll(it).toList() } // Trouver toutes les correspondances
+    for ((index, match) in allMatches.withIndex()) {
+        val startTimestamp = match.groups[1]?.value?.toFloatTime() ?: continue
+        val text = match.groups[3]?.value?.trim() ?: ""
+        val explicitEndTimestamp = match.groups[5]?.value?.toFloatTime()
+
+        // Déterminer le timestamp de fin
+        val endTimestamp = when {
+            explicitEndTimestamp != null -> explicitEndTimestamp // Si un timestamp explicite existe
+            index + 1 < allMatches.size -> allMatches[index + 1].groups[1]?.value?.toFloatTime() // Début de la ligne suivante
+            else -> null // Dernière ligne sans timestamp explicite
+        }
+
+        if (endTimestamp != null) {
+            val duration = endTimestamp - startTimestamp
+            segments.add(LyricSegment(startTime = startTimestamp, text = text, duration = duration))
+        } else {
+            // Dernière ligne sans ligne suivante, appliquer une durée par défaut
+            segments.add(LyricSegment(startTime = startTimestamp, text = text, duration = 2f))
+        }
+    }
+
+    return segments
+}
+
+// Fonction pour convertir un timestamp en secondes
+fun String.toFloatTime(): Float {
+    val parts = this.split(":")
+    val minutes = parts[0].toFloat()
+    val seconds = parts[1].toFloat()
+    return minutes * 60 + seconds
 }
