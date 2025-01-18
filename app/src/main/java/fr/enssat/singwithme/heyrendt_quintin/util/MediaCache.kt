@@ -11,7 +11,7 @@ import androidx.media3.database.ExoDatabaseProvider
 import java.io.File
 
 @UnstableApi
-class MediaCache(context: Context, musicDir: String) {
+class MediaCache(context: Context, songDir: String) {
     // Taille maximale du cache (en octets)
     private val cacheSize: Long = 100L * 1024L * 1024L // 100 Mo
 
@@ -22,7 +22,7 @@ class MediaCache(context: Context, musicDir: String) {
     private val cacheEvictor = LeastRecentlyUsedCacheEvictor(cacheSize)
 
     // Répertoire du cache
-    private val cacheDir = File(context.cacheDir, musicDir)
+    private val cacheDir = File(context.cacheDir, songDir)
 
     // Instance de SimpleCache
     val simpleCache: SimpleCache = SimpleCache(cacheDir, cacheEvictor, databaseProvider)

@@ -28,9 +28,9 @@ fun SingWithMeNavHost(
     ) {
         composable(route = HomeDestination.route) {
             HomeScreen(
-                onNavigateToKaraoke = { musicPath ->
-                    // Naviguer vers la destination Karaoke en injectant la valeur du musicPath
-                    navController.navigate("karaoke_screen/$musicPath") // Utiliser la bonne syntaxe ici
+                onNavigateToKaraoke = { songPath ->
+                    // Naviguer vers la destination Karaoke en injectant la valeur du songPath
+                    navController.navigate("karaoke_screen/$songPath")
                 }
             )
         }
@@ -39,14 +39,14 @@ fun SingWithMeNavHost(
         composable(
             route = KaraokeDestination.route,
             arguments = listOf(
-                navArgument(KaraokeDestination.musicPathArg) { type = NavType.StringType }
+                navArgument(KaraokeDestination.songPathArg) { type = NavType.StringType }
             )
         ) { backStackEntry: NavBackStackEntry ->
-            val musicPath = backStackEntry.arguments?.getString(KaraokeDestination.musicPathArg)
-            val decodedPath = musicPath?.let { URLDecoder.decode(it, StandardCharsets.UTF_8.toString()) }
+            val songPath = backStackEntry.arguments?.getString(KaraokeDestination.songPathArg)
+            val decodedPath = songPath?.let { URLDecoder.decode(it, StandardCharsets.UTF_8.toString()) }
 
             if (decodedPath != null) {
-                KaraokeScreen(musicPath = decodedPath)
+                KaraokeScreen(songPath = decodedPath)
             }
         }
 

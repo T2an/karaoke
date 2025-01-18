@@ -58,8 +58,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     // Définit le chemin de la playlist
-    val playlistUrl =
-        "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
+    val playlistUrl = "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
 
     // Instancie le view model
     val viewModel: HomeViewModel = viewModel(
@@ -109,7 +108,7 @@ fun HomeScreen(
         } else {
             HomeBody(
                 playlistItems = playlistItems,
-                onItemClick = { musicPath -> onNavigateToKaraoke(musicPath) },
+                onItemClick = { songPath -> onNavigateToKaraoke(songPath) },
                 modifier = modifier.fillMaxSize(),
                 contentPadding = innerPadding,
             )

@@ -11,10 +11,13 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 
+// TODO : Faire des TU et dire dans le readme comment les lancer
 /**
  * Classe utile pour le téléchargement et le parsing de la playlist
+ *
+ * @param playlistUrl, le lien de la playlist
  */
-class PlaylistUtil(val playlistUrl: String) {
+class PlaylistUtil(private val playlistUrl: String) {
 
     // Initialise une instance Moshi avec un adaptateur pour le parsing de JSON
     private val moshiBuilder: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()

@@ -14,8 +14,10 @@ import io.ktor.client.statement.bodyAsText
 
 /**
  * Classe utile pour le téléchargement et le parsing d'une musique
+ *
+ * @param songUrl, le lien de la musique
  */
-class SongUtil {
+class SongUtil(private val songUrl: String) {
 
     // Initialise une instance Moshi avec un adaptateur pour le parsing de JSON
     private val moshiBuilder: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
@@ -27,16 +29,14 @@ class SongUtil {
     /**
      * Télécharge une musique avec une requête HTTP
      *
-     * @param url, le lien du fichier md de la musique
      * @return le contenu de la musique au format texte
-     *
      * @throws Exception, une exception en cas de problème lors de la requête HTTP
      */
-    suspend fun downloadSong(url: String): String {
+    suspend fun downloadSong(): String {
         val client = HttpClient(CIO)
         val response: HttpResponse
         try {
-            response = client.get(url)
+            response = client.get(songUrl)
             return response.bodyAsText()
         } catch(e: Exception) {
             throw Exception("Impossible de télécharger la musique pour le moment.")
