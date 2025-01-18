@@ -91,13 +91,12 @@ fun HomeScreen(
 
     var isLoading by remember { mutableStateOf(false) }
 
-    val playlistItemsString: String? = preferencesManager.getData("playlistItems")
     val url = "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
+    val playlistItemsString: String? = preferencesManager.getData("playlistItems")
 
     if (playlistItemsString.isNullOrBlank()) {
         LaunchedEffect(Unit) {
             isLoading = true
-
             scope.launch {
                 playlistItems = downloadAndSavePlaylist(url, context, playlistUtil, preferencesManager)
                 isLoading = false
@@ -136,7 +135,7 @@ fun HomeScreen(
                     contentDescription = stringResource(R.string.refresh)
                 )
             }
-        },
+        }
     ) { innerPadding ->
         if (isLoading) {
             Text(
@@ -164,7 +163,7 @@ suspend fun downloadAndSavePlaylist(
 ): List<PlaylistItem> {
     return try {
         val body: String = playlistUtil.downloadPlaylist(url)
-        val playlistItems = playlistUtil.fromJson(body)
+        val playlistItems: List<PlaylistItem> = playlistUtil.fromJson(body)
         preferencesManager.saveData("playlistItems", playlistUtil.toJson(playlistItems))
         playlistItems
     } catch (e: Exception) {

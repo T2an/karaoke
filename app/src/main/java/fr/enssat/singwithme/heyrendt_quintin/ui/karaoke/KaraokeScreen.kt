@@ -1,5 +1,8 @@
 package fr.enssat.singwithme.heyrendt_quintin.ui.karaoke
 
+import android.content.Context
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
@@ -21,12 +24,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.Icons.Filled
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
@@ -50,19 +55,25 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import fr.enssat.singwithme.heyrendt_quintin.R
 import fr.enssat.singwithme.heyrendt_quintin.SingWithMeTopAppBar
 import fr.enssat.singwithme.heyrendt_quintin.data.Song
 import fr.enssat.singwithme.heyrendt_quintin.ui.navigation.NavigationDestination
 import fr.enssat.singwithme.heyrendt_quintin.ui.theme.SingWithMeTheme
-import fr.enssat.singwithme.heyrendt_quintin.util.MusicParser
+import fr.enssat.singwithme.heyrendt_quintin.util.MediaCache
+import fr.enssat.singwithme.heyrendt_quintin.util.PreferencesManager
+import fr.enssat.singwithme.heyrendt_quintin.util.SongUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -77,7 +88,7 @@ object KaraokeDestination : NavigationDestination {
 lateinit var audioPlayer: ExoPlayer
 lateinit var karaokeAnimation: Animatable<Float, AnimationVector1D>
 
-@OptIn(ExperimentalMaterial3Api::class)
+@androidx.annotation.OptIn(UnstableApi::class) @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KaraokeScreen(
     musicPath: String,
@@ -85,28 +96,36 @@ fun KaraokeScreen(
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    val musicUrl = "${stringResource(R.string.base_url)}/${musicPath}"
-    val musicParser = MusicParser()
+    val context = LocalContext.current
+    val preferencesManager = remember { PreferencesManager(context) }
 
-    val coroutineScope = rememberCoroutineScope()
+    val songUtil = SongUtil()
+    var song: Song? by remember { mutableStateOf(null) }
+
+    val scope = rememberCoroutineScope()
 
     // État pour gérer le temps courant et la durée
     var currentPosition by remember { mutableLongStateOf(0L) }
 
-    val context = LocalContext.current
-
-    var song: Song? by remember { mutableStateOf(null) }
-
     audioPlayer = ExoPlayer.Builder(context).build()
 
-    // TODO : Mettre en cache musique + .mp3
+    val musicUrl = "${stringResource(R.string.base_url)}/${musicPath}"
+    val songString: String? = preferencesManager.getData(musicPath)
 
     var isPlayerInitialized by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        coroutineScope.launch {
-            song = musicParser.parseSong(musicUrl)
-            isPlayerInitialized = true
+    var isLoading by remember { mutableStateOf(false) }
+
+    if (songString.isNullOrBlank()) {
+        LaunchedEffect(Unit) {
+            isLoading = true
+            scope.launch {
+                song = downloadAndSaveSong(musicUrl, context, songUtil, preferencesManager, musicPath)
+                isLoading = false
+                isPlayerInitialized = true
+            }
         }
+    } else {
+        song = songUtil.fromJson(songString)
     }
 
     var currentLine by remember { mutableIntStateOf(0) }
@@ -115,30 +134,47 @@ fun KaraokeScreen(
     var isPlayerPlaying by remember { mutableStateOf(false) }
 
     if (isPlayerInitialized && song != null) {
+        val mediaCache = MediaCache(context, musicPath)
+        val cacheDataSourceFactory = mediaCache.cacheDataSourceFactory
+
         val soundtrackUrl = "${stringResource(R.string.base_url)}/${musicPath.split("/")[0]}/${song?.soundtrack}"
         // Init ExoPlayer
         audioPlayer = remember {
             ExoPlayer.Builder(context).build().apply {
-                setMediaItem(MediaItem.fromUri(soundtrackUrl))
+                val mediaItem = MediaItem.fromUri(soundtrackUrl)
+
+                // TODO : Cache mp3 marche pas
+                val mediaSource = ProgressiveMediaSource.Factory(cacheDataSourceFactory)
+                    .createMediaSource(mediaItem)
+
+                setMediaSource(mediaSource)
                 prepare()
                 addListener(object : Player.Listener {
                     override fun onEvents(player: Player, events: Player.Events) {
+                        if (events.contains(Player.EVENT_IS_LOADING_CHANGED)) {
+                            audioPlayer.play()
+                        }
+
                         if (events.contains(Player.EVENT_TIMELINE_CHANGED)) {
                             currentPosition = player.currentPosition
                         }
                     }
+
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
                         if (isPlaying) isPlayerPlaying = true
+                    }
+
+                    override fun onPlayerError(error: PlaybackException) {
+                        Log.e("ExoPlayer", "Playback error: ${error.message}")
                     }
                 })
             }
         }
-        audioPlayer.play()
 
         if (isPlayerPlaying) {
             LaunchedEffect(currentLine) {
                 val startTime = song!!.lyricSegments[currentLine].startTime.toLong()
-                val delay = if(currentLine == 0) {
+                val delay = if (currentLine == 0) {
                     startTime
                 } else {
                     song!!.lyricSegments[currentLine + 1].startTime.toLong() - (startTime + song!!.lyricSegments[currentLine].duration.toLong())
@@ -146,7 +182,13 @@ fun KaraokeScreen(
                 delay(delay * 1000)
 
                 karaokeAnimation.snapTo(0f)
-                karaokeAnimation.animateTo(1f, tween(song!!.lyricSegments[currentLine].duration.toInt() * 1000, easing = LinearEasing))
+                karaokeAnimation.animateTo(
+                    1f,
+                    tween(
+                        song!!.lyricSegments[currentLine].duration.toInt() * 1000,
+                        easing = LinearEasing
+                    )
+                )
                 currentLine += 1
             }
         }
@@ -168,17 +210,66 @@ fun KaraokeScreen(
                 scrollBehavior = scrollBehavior
             )
         },
-        bottomBar = {
-            KaraokeActionButtons()
-        }
+//        bottomBar = {
+//            KaraokeActionButtons()
+//        }
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    isLoading = true
+                    song = null
+
+                    scope.launch {
+                        song = downloadAndSaveSong(musicUrl, context, songUtil, preferencesManager, musicPath)
+                        if (song != null)
+                            Toast.makeText(context, "Actualisation finie !", Toast.LENGTH_SHORT).show()
+                        isLoading = false
+                    }
+                },
+                modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_large))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = stringResource(R.string.refresh)
+                )
+            }
+        },
     ) { innerPadding ->
-        KaraokeBody(
-            song = song,
-            karaokeAnimation = karaokeAnimation,
-            currentLine = currentLine,
-            modifier = modifier.fillMaxSize(),
-            contentPadding = innerPadding,
-        )
+        if (isLoading) {
+            Text(
+                text = stringResource(R.string.loading),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = modifier.padding(innerPadding)
+            )
+        } else {
+            KaraokeBody(
+                song = song,
+                karaokeAnimation = karaokeAnimation,
+                currentLine = currentLine,
+                modifier = modifier.fillMaxSize(),
+                contentPadding = innerPadding,
+            )
+        }
+    }
+}
+
+suspend fun downloadAndSaveSong(
+    url: String,
+    context: Context,
+    songUtil: SongUtil,
+    preferencesManager: PreferencesManager,
+    songPath: String
+): Song? {
+    if (audioPlayer.isPlaying) audioPlayer.stop()
+    return try {
+        val body: String = songUtil.downloadSong(url)
+        val song: Song = songUtil.parseSong(body)
+        preferencesManager.saveData(songPath, songUtil.toJson(song))
+        song
+    } catch (e: Exception) {
+        Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+        null
     }
 }
 
@@ -196,10 +287,10 @@ fun KaraokeBody(
     ) {
         if (song == null) {
             Text(
-                // TODO : Utiliser des ressources partout
-                text = "Chargement de la musique en cours...",
+                text = stringResource(R.string.no_song_description),
                 textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(contentPadding)
             )
         } else {
             KaraokeText(
@@ -216,7 +307,9 @@ fun KaraokeActionButtons() {
     val scope = rememberCoroutineScope()
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(PaddingValues(20.dp)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(PaddingValues(20.dp)),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         OutlinedIconButton(
@@ -291,7 +384,7 @@ fun replay() {
 fun KaraokeText(list: List<String>, current: Int, progress: Float) {
     LazyColumn(
         contentPadding = PaddingValues(5.dp)
-    )  {
+    ) {
         itemsIndexed(items = list, key = { index, _ -> index }) { index, text ->
             if (index != current) {
                 Text(
