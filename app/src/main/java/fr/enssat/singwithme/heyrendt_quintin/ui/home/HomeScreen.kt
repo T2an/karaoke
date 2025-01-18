@@ -16,6 +16,7 @@
 
 package fr.enssat.singwithme.heyrendt_quintin.ui.home
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,18 +55,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fr.enssat.singwithme.heyrendt_quintin.R
+import fr.enssat.singwithme.heyrendt_quintin.SingWithMeTopAppBar
 import fr.enssat.singwithme.heyrendt_quintin.data.PlaylistItem
 import fr.enssat.singwithme.heyrendt_quintin.ui.navigation.NavigationDestination
 import fr.enssat.singwithme.heyrendt_quintin.ui.theme.SingWithMeTheme
-import fr.enssat.singwithme.heyrendt_quintin.util.PlaylistParser
+import fr.enssat.singwithme.heyrendt_quintin.util.PlaylistUtil
 import fr.enssat.singwithme.heyrendt_quintin.util.PreferencesManager
-import com.squareup.moshi.JsonAdapter
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.adapter
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import fr.enssat.singwithme.heyrendt_quintin.SingWithMeTopAppBar
 import kotlinx.coroutines.launch
-import java.util.Collections
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -74,12 +70,10 @@ object HomeDestination : NavigationDestination {
     override val titleRes = R.string.app_name
 }
 
-
-
 /**
  * Entry route for Home screen
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalStdlibApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToKaraoke: (String) -> Unit,
@@ -90,27 +84,27 @@ fun HomeScreen(
     val context = LocalContext.current
     val preferencesManager = remember { PreferencesManager(context) }
 
-    val moshiBuilder: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-    val playlistItemAdapter: JsonAdapter<List<PlaylistItem>> = moshiBuilder.adapter<List<PlaylistItem>>()
+    val playlistUtil = PlaylistUtil()
+    var playlistItems: List<PlaylistItem> by remember { mutableStateOf(emptyList()) }
 
-    var playlistItems: List<PlaylistItem> by remember { mutableStateOf(Collections.emptyList()) }
+    val scope = rememberCoroutineScope()
+
+    var isLoading by remember { mutableStateOf(false) }
 
     val playlistItemsString: String? = preferencesManager.getData("playlistItems")
+    val url = "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
+
     if (playlistItemsString.isNullOrBlank()) {
-        val url = "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
-        val playlistParser = PlaylistParser()
-
-        val coroutineScope = rememberCoroutineScope()
-
         LaunchedEffect(Unit) {
-            coroutineScope.launch {
-                playlistItems = playlistParser.parsePlaylist(url)
+            isLoading = true
 
-                preferencesManager.saveData("playlistItems", playlistItemAdapter.toJson(playlistItems))
+            scope.launch {
+                playlistItems = downloadAndSavePlaylist(url, context, playlistUtil, preferencesManager)
+                isLoading = false
             }
         }
     } else {
-        playlistItems = playlistItemAdapter.fromJson(playlistItemsString)!!
+        playlistItems = playlistUtil.fromJson(playlistItemsString)
     }
 
     Scaffold(
@@ -124,25 +118,62 @@ fun HomeScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { },
+                onClick = {
+                    isLoading = true
+                    playlistItems = emptyList()
+
+                    scope.launch {
+                        playlistItems = downloadAndSavePlaylist(url, context, playlistUtil, preferencesManager)
+                        if (playlistItems.isNotEmpty())
+                            Toast.makeText(context, "Actualisation finie !", Toast.LENGTH_SHORT).show()
+                        isLoading = false
+                    }
+                },
                 modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_large))
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.item_entry_title)
+                    contentDescription = stringResource(R.string.refresh)
                 )
             }
         },
     ) { innerPadding ->
-        HomeBody(
-            playlistItems = playlistItems,
-            onItemClick = { musicPath -> onNavigateToKaraoke(musicPath) },
-            modifier = modifier.fillMaxSize(),
-            contentPadding = innerPadding,
-        )
+        if (isLoading) {
+            Text(
+                text = stringResource(R.string.loading),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = modifier.padding(innerPadding)
+            )
+        } else {
+            HomeBody(
+                playlistItems = playlistItems,
+                onItemClick = { musicPath -> onNavigateToKaraoke(musicPath) },
+                modifier = modifier.fillMaxSize(),
+                contentPadding = innerPadding,
+            )
+        }
     }
 }
 
+suspend fun downloadAndSavePlaylist(
+    url: String,
+    context: Context,
+    playlistUtil: PlaylistUtil,
+    preferencesManager: PreferencesManager
+): List<PlaylistItem> {
+    return try {
+        val body: String = playlistUtil.downloadPlaylist(url)
+        val playlistItems = playlistUtil.fromJson(body)
+        preferencesManager.saveData("playlistItems", playlistUtil.toJson(playlistItems))
+        playlistItems
+    } catch (e: Exception) {
+        Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+        emptyList()
+    }
+}
+
+// TODO : Tester en light theme
 @Composable
 private fun HomeBody(
     playlistItems: List<PlaylistItem>,
@@ -156,7 +187,7 @@ private fun HomeBody(
     ) {
         if (playlistItems.isEmpty()) {
             Text(
-                text = stringResource(R.string.no_item_description),
+                text = stringResource(R.string.no_playlist_description),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(contentPadding),
@@ -167,7 +198,7 @@ private fun HomeBody(
             PlaylistItems(
                 itemList = playlistItems,
                 onItemClick = { item ->
-                    if (item.path.isNullOrBlank()) {
+                    if (item.locked || item.path.isNullOrBlank()) {
                         Toast.makeText(
                             context,
                             "Cette musique n'est pas disponible pour le karaoké",
@@ -175,7 +206,12 @@ private fun HomeBody(
                         ).show()
                     } else {
                         // Utilisation de 'item.path' au lieu de 'item.name'
-                        onItemClick(item.path.let { URLEncoder.encode(it, StandardCharsets.UTF_8.toString()) } ?: "")
+                        onItemClick(item.path.let {
+                            URLEncoder.encode(
+                                it,
+                                StandardCharsets.UTF_8.toString()
+                            )
+                        } ?: "")
                     }
                 },
                 contentPadding = contentPadding,
@@ -193,16 +229,13 @@ private fun PlaylistItems(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier) {
+    Column(modifier = modifier.padding(contentPadding)) {
         Text(
             text = stringResource(R.string.subtitle),
             textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding()
+            style = MaterialTheme.typography.titleLarge
         )
-        LazyColumn(
-            contentPadding = contentPadding
-        ) {
+        LazyColumn {
             items(items = itemList, key = { it.name }) { item ->
                 PlaylistItem(
                     item = item,

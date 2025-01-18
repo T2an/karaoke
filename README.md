@@ -1,3 +1,5 @@
+# TODO : README lien vers README archi et lien APK
+
 Inventory app
 ==================================
 

@@ -99,6 +99,8 @@ fun KaraokeScreen(
 
     audioPlayer = ExoPlayer.Builder(context).build()
 
+    // TODO : Mettre en cache musique + .mp3
+
     var isPlayerInitialized by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         coroutineScope.launch {
