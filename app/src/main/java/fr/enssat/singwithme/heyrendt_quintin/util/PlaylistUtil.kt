@@ -12,20 +12,28 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 
 /**
- * Util class for playlist parsing
+ * Classe utile pour le téléchargement et le parsing de la playlist
  */
-class PlaylistUtil {
+class PlaylistUtil(val playlistUrl: String) {
 
+    // Initialise une instance Moshi avec un adaptateur pour le parsing de JSON
     private val moshiBuilder: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
 
+    // Initialise un adapter JSON pour les éléments de la playlist
     @OptIn(ExperimentalStdlibApi::class)
     private val playlistItemAdapter: JsonAdapter<List<PlaylistItem>> = this.moshiBuilder.adapter<List<PlaylistItem>>()
 
-    suspend fun downloadPlaylist(url: String): String {
+    /**
+     * Télécharge le fichier playlist avec une requête HTTP
+     *
+     * @return le contenu de la playlist au format texte
+     * @throws Exception, une exception en cas de problème lors de la requête HTTP
+     */
+    suspend fun downloadPlaylist(): String {
         val client = HttpClient(CIO)
         val response: HttpResponse
         try {
-            response = client.get(url)
+            response = client.get(playlistUrl)
             return response.bodyAsText()
         } catch(e: Exception) {
             throw Exception("Impossible de télécharger la playlist pour le moment.")
@@ -34,10 +42,20 @@ class PlaylistUtil {
         }
     }
 
+    /**
+     * Transforme un JSON en liste de PlaylistItem
+     *
+     * @return la playlist
+     */
     fun fromJson(json: String): List<PlaylistItem> {
         return playlistItemAdapter.fromJson(json) ?: emptyList()
     }
 
+    /**
+     * Transforme une liste de PlaylistItem en JSON
+     *
+     * @return le JSON
+     */
     fun toJson(playlistItems: List<PlaylistItem>): String {
         return playlistItemAdapter.toJson(playlistItems)
     }

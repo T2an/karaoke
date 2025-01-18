@@ -13,15 +13,25 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 
 /**
- * Util class for music parsing
+ * Classe utile pour le téléchargement et le parsing d'une musique
  */
 class SongUtil {
 
+    // Initialise une instance Moshi avec un adaptateur pour le parsing de JSON
     private val moshiBuilder: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
 
+    // Initialise un adapter JSON pour une musique
     @OptIn(ExperimentalStdlibApi::class)
     private val songAdapter: JsonAdapter<Song> = this.moshiBuilder.adapter<Song>()
 
+    /**
+     * Télécharge une musique avec une requête HTTP
+     *
+     * @param url, le lien du fichier md de la musique
+     * @return le contenu de la musique au format texte
+     *
+     * @throws Exception, une exception en cas de problème lors de la requête HTTP
+     */
     suspend fun downloadSong(url: String): String {
         val client = HttpClient(CIO)
         val response: HttpResponse
@@ -36,7 +46,9 @@ class SongUtil {
     }
 
     /**
-     * Parse a string into a Song object
+     * Transforme le fichier md de la musique en objet Song
+     *
+     * @return la musique
      */
     fun parseSong(song: String): Song {
         val lines = song.lines()
@@ -68,43 +80,54 @@ class SongUtil {
         }
 
         val lyricSegments = parseLyrics(rawLyrics)
-        val lyrics = lyricSegments.map { t -> t.text }
+        val lyrics = lyricSegments.map { line ->
+            line.joinToString { it.text }
+        }
 
         return Song(title, author, soundtrack, lyrics, lyricSegments)
     }
 
-    private fun parseLyrics(rawLyrics: List<String>): List<LyricSegment> {
+    /**
+     * Transforme les paroles en liste de LyricSegment
+     *
+     * @return la liste des segments de paroles
+     */
+    private fun parseLyrics(rawLyrics: List<String>): List<List<LyricSegment>> {
         val regex = Regex("\\{\\s*(\\d+:\\d+(\\.\\d+)?)\\s*\\}([^\\{]*)(\\{\\s*(\\d+:\\d+(\\.\\d+)?)\\s*\\})?")
         // Regex pour extraire timestamps et texte
 
-        val segments = mutableListOf<LyricSegment>()
+        return rawLyrics.map { line -> // Traiter chaque ligne indépendamment
+            val segments = mutableListOf<LyricSegment>()
+            val matches = regex.findAll(line).toList()
 
-        val allMatches = rawLyrics.flatMap { regex.findAll(it).toList() } // Trouver toutes les correspondances
-        for ((index, match) in allMatches.withIndex()) {
-            val startTimestamp = match.groups[1]?.value?.toFloatTime() ?: continue
-            val text = match.groups[3]?.value?.trim() ?: ""
-            val explicitEndTimestamp = match.groups[5]?.value?.toFloatTime()
+            for ((index, match) in matches.withIndex()) {
+                val startTimestamp = match.groups[1]?.value?.toFloatTime() ?: continue
+                val text = match.groups[3]?.value?.trim() ?: ""
+                val explicitEndTimestamp = match.groups[5]?.value?.toFloatTime()
 
-            // Déterminer le timestamp de fin
-            val endTimestamp = when {
-                explicitEndTimestamp != null -> explicitEndTimestamp // Si un timestamp explicite existe
-                index + 1 < allMatches.size -> allMatches[index + 1].groups[1]?.value?.toFloatTime() // Début de la ligne suivante
-                else -> null // Dernière ligne sans timestamp explicite
+                // Déterminer le timestamp de fin
+                val endTimestamp = when {
+                    explicitEndTimestamp != null -> explicitEndTimestamp
+                    index + 1 < matches.size -> matches[index + 1].groups[1]?.value?.toFloatTime()
+                    else -> null
+                }
+
+                if (endTimestamp != null) {
+                    val duration = endTimestamp - startTimestamp
+                    segments.add(LyricSegment(startTime = startTimestamp, text = text, duration = duration))
+                } else {
+                    // Dernière ligne sans ligne suivante, durée par défaut
+                    segments.add(LyricSegment(startTime = startTimestamp, text = text, duration = 2f))
+                }
             }
 
-            if (endTimestamp != null) {
-                val duration = endTimestamp - startTimestamp
-                segments.add(LyricSegment(startTime = startTimestamp, text = text, duration = duration))
-            } else {
-                // Dernière ligne sans ligne suivante, appliquer une durée par défaut
-                segments.add(LyricSegment(startTime = startTimestamp, text = text, duration = 2f))
-            }
+            segments // Retourner les segments pour cette ligne
         }
-
-        return segments
     }
 
-    // Fonction pour convertir un timestamp en secondes
+    /**
+     * Converti un timestamp en secondes
+     */
     private fun String.toFloatTime(): Float {
         val parts = this.split(":")
         val minutes = parts[0].toFloat()
@@ -112,10 +135,20 @@ class SongUtil {
         return minutes * 60 + seconds
     }
 
+    /**
+     * Transforme un JSON en musique
+     *
+     * @return la musique
+     */
     fun fromJson(json: String): Song? {
         return songAdapter.fromJson(json)
     }
 
+    /**
+     * Transforme une musique en JSON
+     *
+     * @return le JSON
+     */
     fun toJson(song: Song): String {
         return songAdapter.toJson(song)
     }

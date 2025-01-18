@@ -1,33 +1,19 @@
-/*
- * Copyright (C) 2023 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package fr.enssat.singwithme.heyrendt_quintin.ui.home
 
-import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,21 +25,17 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.enssat.singwithme.heyrendt_quintin.R
 import fr.enssat.singwithme.heyrendt_quintin.SingWithMeTopAppBar
 import fr.enssat.singwithme.heyrendt_quintin.data.PlaylistItem
@@ -61,7 +43,6 @@ import fr.enssat.singwithme.heyrendt_quintin.ui.navigation.NavigationDestination
 import fr.enssat.singwithme.heyrendt_quintin.ui.theme.SingWithMeTheme
 import fr.enssat.singwithme.heyrendt_quintin.util.PlaylistUtil
 import fr.enssat.singwithme.heyrendt_quintin.util.PreferencesManager
-import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -70,41 +51,28 @@ object HomeDestination : NavigationDestination {
     override val titleRes = R.string.app_name
 }
 
-/**
- * Entry route for Home screen
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToKaraoke: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
+    // Définit le chemin de la playlist
+    val playlistUrl =
+        "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
+
+    // Instancie le view model
+    val viewModel: HomeViewModel = viewModel(
+        factory = HomeViewModelFactory(
+            PlaylistUtil(playlistUrl),
+            PreferencesManager(LocalContext.current)
+        )
+    )
+
+    val playlistItems by viewModel.playlistItems.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-
-    val context = LocalContext.current
-    val preferencesManager = remember { PreferencesManager(context) }
-
-    val playlistUtil = PlaylistUtil()
-    var playlistItems: List<PlaylistItem> by remember { mutableStateOf(emptyList()) }
-
-    val scope = rememberCoroutineScope()
-
-    var isLoading by remember { mutableStateOf(false) }
-
-    val url = "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
-    val playlistItemsString: String? = preferencesManager.getData("playlistItems")
-
-    if (playlistItemsString.isNullOrBlank()) {
-        LaunchedEffect(Unit) {
-            isLoading = true
-            scope.launch {
-                playlistItems = downloadAndSavePlaylist(url, context, playlistUtil, preferencesManager)
-                isLoading = false
-            }
-        }
-    } else {
-        playlistItems = playlistUtil.fromJson(playlistItemsString)
-    }
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -117,18 +85,8 @@ fun HomeScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    isLoading = true
-                    playlistItems = emptyList()
-
-                    scope.launch {
-                        playlistItems = downloadAndSavePlaylist(url, context, playlistUtil, preferencesManager)
-                        if (playlistItems.isNotEmpty())
-                            Toast.makeText(context, "Actualisation finie !", Toast.LENGTH_SHORT).show()
-                        isLoading = false
-                    }
-                },
-                modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_large))
+                onClick = { viewModel.refreshPlaylist() },
+                modifier = Modifier.padding(20.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
@@ -138,12 +96,16 @@ fun HomeScreen(
         }
     ) { innerPadding ->
         if (isLoading) {
-            Text(
-                text = stringResource(R.string.loading),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = modifier.padding(innerPadding)
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.loading),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
         } else {
             HomeBody(
                 playlistItems = playlistItems,
@@ -155,24 +117,6 @@ fun HomeScreen(
     }
 }
 
-suspend fun downloadAndSavePlaylist(
-    url: String,
-    context: Context,
-    playlistUtil: PlaylistUtil,
-    preferencesManager: PreferencesManager
-): List<PlaylistItem> {
-    return try {
-        val body: String = playlistUtil.downloadPlaylist(url)
-        val playlistItems: List<PlaylistItem> = playlistUtil.fromJson(body)
-        preferencesManager.saveData("playlistItems", playlistUtil.toJson(playlistItems))
-        playlistItems
-    } catch (e: Exception) {
-        Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
-        emptyList()
-    }
-}
-
-// TODO : Tester en light theme
 @Composable
 private fun HomeBody(
     playlistItems: List<PlaylistItem>,
@@ -185,12 +129,16 @@ private fun HomeBody(
         modifier = modifier,
     ) {
         if (playlistItems.isEmpty()) {
-            Text(
-                text = stringResource(R.string.no_playlist_description),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(contentPadding),
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.no_playlist_description),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
         } else {
             val context = LocalContext.current
 
@@ -200,21 +148,15 @@ private fun HomeBody(
                     if (item.locked || item.path.isNullOrBlank()) {
                         Toast.makeText(
                             context,
-                            "Cette musique n'est pas disponible pour le karaoké",
+                            context.getString(R.string.song_not_available),
                             Toast.LENGTH_SHORT
                         ).show()
-                    } else {
-                        // Utilisation de 'item.path' au lieu de 'item.name'
-                        onItemClick(item.path.let {
-                            URLEncoder.encode(
-                                it,
-                                StandardCharsets.UTF_8.toString()
-                            )
-                        } ?: "")
+                    } else if (item.path.isNotBlank()) {
+                        onItemClick(URLEncoder.encode(item.path, StandardCharsets.UTF_8.toString()))
                     }
                 },
                 contentPadding = contentPadding,
-                modifier = Modifier.padding(horizontal = dimensionResource(id = R.dimen.padding_small))
+                modifier = Modifier.padding(8.dp)
             )
         }
     }
@@ -228,21 +170,13 @@ private fun PlaylistItems(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.padding(contentPadding)) {
-        Text(
-            text = stringResource(R.string.subtitle),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.titleLarge
-        )
-        LazyColumn {
-            items(items = itemList, key = { it.name }) { item ->
-                PlaylistItem(
-                    item = item,
-                    modifier = Modifier
-                        .padding(dimensionResource(id = R.dimen.padding_small)),
-                    onClick = onItemClick
-                )
-            }
+    LazyColumn(modifier = modifier.padding(contentPadding)) {
+        items(items = itemList, key = { it.name }) { item ->
+            PlaylistItem(
+                item = item,
+                modifier = Modifier.padding(8.dp),
+                onClick = onItemClick
+            )
         }
     }
 }
@@ -260,20 +194,32 @@ private fun PlaylistItem(
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .padding(dimensionResource(id = R.dimen.padding_large))
+                .padding(16.dp)
                 .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_small))
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Text(
-                text = item.artist,
-                style = MaterialTheme.typography.titleMedium
-            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = item.artist,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+            if (!item.locked) {
+                Icon(
+                    imageVector = Icons.Filled.MusicNote,
+                    contentDescription = stringResource(R.string.available)
+                )
+            }
         }
     }
 }
@@ -284,7 +230,7 @@ fun HomeBodyPreview() {
     SingWithMeTheme {
         HomeBody(listOf(
             PlaylistItem("Bohemian Rhapsody", "Queen", false, path = ""),
-            PlaylistItem("Creep", "Radiohead", false, path = ""),
+            PlaylistItem("Creep", "Radiohead", true, path = ""),
         ), onItemClick = {})
     }
 }

@@ -55,7 +55,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -65,13 +64,11 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import fr.enssat.singwithme.heyrendt_quintin.R
 import fr.enssat.singwithme.heyrendt_quintin.SingWithMeTopAppBar
 import fr.enssat.singwithme.heyrendt_quintin.data.Song
 import fr.enssat.singwithme.heyrendt_quintin.ui.navigation.NavigationDestination
 import fr.enssat.singwithme.heyrendt_quintin.ui.theme.SingWithMeTheme
-import fr.enssat.singwithme.heyrendt_quintin.util.MediaCache
 import fr.enssat.singwithme.heyrendt_quintin.util.PreferencesManager
 import fr.enssat.singwithme.heyrendt_quintin.util.SongUtil
 import kotlinx.coroutines.CoroutineScope
@@ -87,6 +84,8 @@ object KaraokeDestination : NavigationDestination {
 
 lateinit var audioPlayer: ExoPlayer
 lateinit var karaokeAnimation: Animatable<Float, AnimationVector1D>
+
+// TODO : Tester en light theme
 
 @androidx.annotation.OptIn(UnstableApi::class) @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -134,8 +133,8 @@ fun KaraokeScreen(
     var isPlayerPlaying by remember { mutableStateOf(false) }
 
     if (isPlayerInitialized && song != null) {
-        val mediaCache = MediaCache(context, musicPath)
-        val cacheDataSourceFactory = mediaCache.cacheDataSourceFactory
+//        val mediaCache = MediaCache(context, musicPath)
+//        val cacheDataSourceFactory = mediaCache.cacheDataSourceFactory
 
         val soundtrackUrl = "${stringResource(R.string.base_url)}/${musicPath.split("/")[0]}/${song?.soundtrack}"
         // Init ExoPlayer
@@ -144,10 +143,11 @@ fun KaraokeScreen(
                 val mediaItem = MediaItem.fromUri(soundtrackUrl)
 
                 // TODO : Cache mp3 marche pas
-                val mediaSource = ProgressiveMediaSource.Factory(cacheDataSourceFactory)
-                    .createMediaSource(mediaItem)
-
-                setMediaSource(mediaSource)
+//                val mediaSource = ProgressiveMediaSource.Factory(cacheDataSourceFactory)
+//                    .createMediaSource(mediaItem)
+//
+//                setMediaSource(mediaSource)
+                setMediaItem(mediaItem)
                 prepare()
                 addListener(object : Player.Listener {
                     override fun onEvents(player: Player, events: Player.Events) {
@@ -173,22 +173,46 @@ fun KaraokeScreen(
 
         if (isPlayerPlaying) {
             LaunchedEffect(currentLine) {
-                val startTime = song!!.lyricSegments[currentLine].startTime.toLong()
+                val currentSegments = song!!.lyricSegments[currentLine]
+
+                // Calcul du délai avant de commencer la ligne
+                val startTime = currentSegments[0].startTime.toLong()
                 val delay = if (currentLine == 0) {
                     startTime
                 } else {
-                    song!!.lyricSegments[currentLine + 1].startTime.toLong() - (startTime + song!!.lyricSegments[currentLine].duration.toLong())
+                    song!!.lyricSegments[currentLine + 1][0].startTime.toLong() - (startTime + currentSegments[0].duration.toLong())
                 }
-                delay(delay * 1000)
+                delay(delay * 1000) // Attente avant le début de l'animation
 
-                karaokeAnimation.snapTo(0f)
-                karaokeAnimation.animateTo(
-                    1f,
-                    tween(
-                        song!!.lyricSegments[currentLine].duration.toInt() * 1000,
-                        easing = LinearEasing
+                var elapsedTime = 0f // Suivi du temps écoulé pour la ligne actuelle
+
+                // Calcul de la durée totale de la ligne
+                val totalLineDuration = currentSegments.sumOf { it.duration.toLong() }
+
+                // Animation de chaque segment
+                for (segment in currentSegments) {
+                    // Réinitialiser l'animation
+                    karaokeAnimation.snapTo(0f)
+
+                    val segmentEndProgress = (elapsedTime + segment.duration) / totalLineDuration
+
+                    // Lancer l'animation avec progression fluide
+                    karaokeAnimation.animateTo(
+                        segmentEndProgress,
+                        tween(
+                            durationMillis = (segment.duration * 1000).toInt(),
+                            easing = LinearEasing
+                        )
                     )
-                )
+
+                    // Mettre à jour le temps écoulé pour le prochain segment
+                    elapsedTime += segment.duration
+
+                    // Attendre la durée du segment avant de passer au suivant
+                    delay((segment.duration * 1000).toLong())
+                }
+
+                // Passer à la ligne suivante après avoir animé tous les segments
                 currentLine += 1
             }
         }
@@ -226,7 +250,7 @@ fun KaraokeScreen(
                         isLoading = false
                     }
                 },
-                modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_large))
+                modifier = Modifier.padding(20.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
