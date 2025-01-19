@@ -3,6 +3,7 @@ package fr.enssat.singwithme.heyrendt_quintin.ui.karaoke
 import android.content.Context
 import android.util.Log
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -35,19 +36,17 @@ class KaraokeViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> get() = _isLoading
 
-    private val _isPlayerInitialized = MutableStateFlow(false)
-    val isPlayerInitialized: StateFlow<Boolean> get() = _isPlayerInitialized
-
-    private val _currentLine = MutableStateFlow(0)
-    val currentLine: StateFlow<Int> get() = _currentLine
+    private val _audioPlayer = MutableStateFlow<ExoPlayer?>(null)
+    val audioPlayer: StateFlow<ExoPlayer?> = _audioPlayer
 
     private val _isPlayerPlaying = MutableStateFlow(false)
     val isPlayerPlaying: StateFlow<Boolean> get() = _isPlayerPlaying
 
-    val karaokeAnimation = Animatable(0f)
+    private val _currentLine = MutableStateFlow(0)
+    val currentLine: StateFlow<Int> get() = _currentLine
 
-    private val _audioPlayer = MutableStateFlow<ExoPlayer?>(null)
-    val audioPlayer: StateFlow<ExoPlayer?> = _audioPlayer
+    private val _karaokeAnimation = MutableStateFlow(Animatable(0f))
+    val karaokeAnimation: StateFlow<Animatable<Float, AnimationVector1D>> get() = _karaokeAnimation
 
     fun initializePlayer(soundtrackUrl: String) {
         val player = ExoPlayer.Builder(context).build()
@@ -67,6 +66,7 @@ class KaraokeViewModel(
             }
         })
         _audioPlayer.value = player
+        _audioPlayer.value!!.play()
     }
 
     fun releasePlayer() {
@@ -104,7 +104,6 @@ class KaraokeViewModel(
                 null
             }
             _isLoading.value = false
-            _isPlayerInitialized.value = true
         }
     }
 
@@ -114,7 +113,7 @@ class KaraokeViewModel(
      * @return la musique
      */
     private suspend fun downloadAndSaveSong(songPath: String): Song? {
-        if (_audioPlayer.value!!.isPlaying) _audioPlayer.value!!.stop()
+        if (_audioPlayer.value?.isPlaying == true) _audioPlayer.value?.stop()
 
         return try {
             val body: String = songUtil.downloadSong()

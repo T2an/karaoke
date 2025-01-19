@@ -64,9 +64,6 @@ object KaraokeDestination : NavigationDestination {
 }
 
 // TODO : Tester en light theme
-
-lateinit var karaokeAnimation: Animatable<Float, AnimationVector1D>
-
 @androidx.annotation.OptIn(UnstableApi::class) @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KaraokeScreen(
@@ -90,13 +87,14 @@ fun KaraokeScreen(
 
     val song by viewModel.song.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val isPlayerInitialized by viewModel.isPlayerInitialized.collectAsState()
     val currentLine by viewModel.currentLine.collectAsState()
+    val audioPlayer by viewModel.audioPlayer.collectAsState()
     val isPlayerPlaying by viewModel.isPlayerPlaying.collectAsState()
+    val karaokeAnimation by viewModel.karaokeAnimation.collectAsState()
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    if (isPlayerInitialized && song != null) {
+    if (song != null) {
         val soundtrackUrl = "${stringResource(R.string.base_url)}/${songPath.split("/")[0]}/${song?.soundtrack}"
         LaunchedEffect(soundtrackUrl) {
             viewModel.initializePlayer(soundtrackUrl)
@@ -170,7 +168,7 @@ fun KaraokeScreen(
                 onClick = {
                     viewModel.refreshSong(songPath)
                     // TODO : Mettre plus de Toast sur HomeScreen
-                    Toast.makeText(context, "Actualisation finie !", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.refresh), Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.padding(20.dp)
             ) {
@@ -191,7 +189,7 @@ fun KaraokeScreen(
         } else {
             KaraokeBody(
                 song = song,
-                karaokeAnimation = viewModel.karaokeAnimation,
+                karaokeAnimation = karaokeAnimation,
                 currentLine = currentLine,
                 modifier = modifier.fillMaxSize(),
                 contentPadding = innerPadding,

@@ -57,6 +57,8 @@ fun HomeScreen(
     onNavigateToKaraoke: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+
     // Définit le chemin de la playlist
     val playlistUrl = "${stringResource(R.string.base_url)}/${stringResource(R.string.playlist_file)}"
 
@@ -64,7 +66,7 @@ fun HomeScreen(
     val viewModel: HomeViewModel = viewModel(
         factory = HomeViewModelFactory(
             PlaylistUtil(playlistUrl),
-            PreferencesManager(LocalContext.current)
+            PreferencesManager(context)
         )
     )
 
