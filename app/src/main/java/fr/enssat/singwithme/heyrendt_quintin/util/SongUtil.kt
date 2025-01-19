@@ -1,6 +1,5 @@
 package fr.enssat.singwithme.heyrendt_quintin.util
 
-import android.util.Log
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.adapter
@@ -12,7 +11,6 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import kotlin.math.log
 
 /**
  * Classe utile pour le téléchargement et le parsing d'une musique
@@ -95,7 +93,7 @@ class SongUtil(private val songUrl: String) {
      * @return la liste des segments de paroles
      */
     private fun parseLyrics(rawLyrics: List<String>): List<List<LyricSegment>> {
-        val regex = """\{ (\d+):(\d+)(?:\.(\d+))? \}""".toRegex() // Pour capturer les timestamps
+        val regex = """\{\s*(\d+)\s*:\s*(\d+)(?:\.(\d+))?\s*\}""".toRegex() // Pour capturer les timestamps
         val segments = mutableListOf<List<LyricSegment>>()
 
         for (line in rawLyrics) {
@@ -117,7 +115,7 @@ class SongUtil(private val songUrl: String) {
 
                 // Ajouter le segment uniquement s'il y a du texte
                 if (text.isNotEmpty()) {
-                    lyricSegments.add(LyricSegment(startTime, text, -1f))
+                    lyricSegments.add(LyricSegment(startTime, text, 1f))
                 }
             }
 

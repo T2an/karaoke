@@ -11,7 +11,7 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 
-// TODO : Faire des TU et dire dans le readme comment les lancer
+// TODO : Faire des TU et dire dans le readme comment les lancer + APK
 /**
  * Classe utile pour le téléchargement et le parsing de la playlist
  *

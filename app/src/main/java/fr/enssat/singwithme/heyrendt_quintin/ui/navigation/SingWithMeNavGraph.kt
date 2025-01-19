@@ -35,7 +35,6 @@ fun SingWithMeNavHost(
             )
         }
 
-        // TODO : Faire le retour arrière
         composable(
             route = KaraokeDestination.route,
             arguments = listOf(
@@ -46,7 +45,12 @@ fun SingWithMeNavHost(
             val decodedPath = songPath?.let { URLDecoder.decode(it, StandardCharsets.UTF_8.toString()) }
 
             if (decodedPath != null) {
-                KaraokeScreen(songPath = decodedPath)
+                KaraokeScreen(
+                    onNavigateToHome = {
+                        navController.navigate("home")
+                    },
+                    songPath = decodedPath
+                )
             }
         }
 

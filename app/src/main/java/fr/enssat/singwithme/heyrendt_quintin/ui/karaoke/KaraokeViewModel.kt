@@ -139,7 +139,18 @@ class KaraokeViewModel(
         }
     }
 
+    /**
+     * Incrémente la ligne courante
+     */
     fun incrementCurrentLine() {
         _currentLine.value++
+    }
+
+    /**
+     * Libère le lecteur audio
+     */
+    fun releasePlayer() {
+        _audioPlayer.value?.pause()
+        _audioPlayer.value?.release()
     }
 }

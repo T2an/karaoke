@@ -1,6 +1,5 @@
 package fr.enssat.singwithme.heyrendt_quintin.ui.karaoke
 
-import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
@@ -45,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.util.UnstableApi
 import fr.enssat.singwithme.heyrendt_quintin.R
@@ -63,10 +63,10 @@ object KaraokeDestination : NavigationDestination {
     const val songPathArg = "songPath"
 }
 
-// TODO : Tester en light theme
 @androidx.annotation.OptIn(UnstableApi::class) @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KaraokeScreen(
+    onNavigateToHome: () -> Unit,
     songPath: String,
     modifier: Modifier = Modifier
 ) {
@@ -99,11 +99,6 @@ fun KaraokeScreen(
         LaunchedEffect(soundtrackUrl) {
             viewModel.initializePlayer(soundtrackUrl)
         }
-
-//        song!!.lyricSegments.forEachIndexed { index, line ->
-//            Log.i("line", index.toString())
-//            Log.i("segments", line.toString())
-//        }
 
         if (isPlayerPlaying) {
             LaunchedEffect(currentLine) {
@@ -151,7 +146,7 @@ fun KaraokeScreen(
 
     DisposableEffect(Unit) {
         onDispose {
-            audioPlayer?.release()
+            viewModel.releasePlayer()
         }
     }
 
@@ -161,6 +156,7 @@ fun KaraokeScreen(
             SingWithMeTopAppBar(
                 title = stringResource(KaraokeDestination.titleRes),
                 canNavigateBack = true,
+                navigateUp = { onNavigateToHome() },
                 scrollBehavior = scrollBehavior
             )
         },
@@ -244,7 +240,9 @@ fun KaraokeText(list: List<String>, current: Int, progress: Float) {
             if (index != current) {
                 Text(
                     text = text,
-                    color = Color.Red,
+                    color = Color.Gray,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 20.sp,
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {
@@ -265,7 +263,9 @@ fun KaraokeSimpleText(text: String, progress: Float) {
     Box {
         Text(
             text = text,
-            color = Color.Red,
+            color = Color.Gray,
+            style = MaterialTheme.typography.titleMedium,
+            fontSize = 20.sp,
             modifier = Modifier
                 .onSizeChanged { size ->
                     textWidth = size.width
@@ -275,7 +275,9 @@ fun KaraokeSimpleText(text: String, progress: Float) {
 
         Text(
             text = text.take(visibleChars),
-            color = Color.Gray,
+            color = Color.Red,
+            style = MaterialTheme.typography.titleMedium,
+            fontSize = 20.sp,
             maxLines = 1,
         )
 
@@ -285,7 +287,7 @@ fun KaraokeSimpleText(text: String, progress: Float) {
                 .width(2.dp)
                 .offset(x = (textWidth * progress).pxToDp())
         ) {
-            drawRect(color = Color.Gray)
+            drawRect(color = Color.Red)
         }
     }
 }
