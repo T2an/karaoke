@@ -111,12 +111,23 @@ class KaraokeViewModel(
     }
 
     /**
+     * Redémarre le lecteur audio et l'animation après un refresh
+     */
+    fun restartPlayer() {
+        _audioPlayer.value?.seekTo(0)
+        _audioPlayer.value?.playWhenReady = true
+        _audioPlayer.value?.play()
+        _karaokeAnimation.value = Animatable(0f)
+        _currentLine.value = 0
+    }
+
+    /**
      * Télécharge et stocke en cache la musique
      *
      * @return la musique
      */
     private suspend fun downloadAndSaveSong(songPath: String): Song? {
-        if (_audioPlayer.value?.isPlaying == true) _audioPlayer.value?.stop()
+        if (_audioPlayer.value?.isPlaying == true) _audioPlayer.value?.pause()
 
         return try {
             val body: String = songUtil.downloadSong()

@@ -34,17 +34,11 @@ import androidx.navigation.compose.rememberNavController
 import fr.enssat.singwithme.heyrendt_quintin.R.string
 import fr.enssat.singwithme.heyrendt_quintin.ui.navigation.SingWithMeNavHost
 
-/**
- * Top level composable that represents screens for the application.
- */
 @Composable
 fun SingWithMeApp(navController: NavHostController = rememberNavController()) {
     SingWithMeNavHost(navController = navController)
 }
 
-/**
- * App bar to display title and conditionally display the back navigation.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SingWithMeTopAppBar(

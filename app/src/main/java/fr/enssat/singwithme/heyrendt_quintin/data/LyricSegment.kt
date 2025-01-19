@@ -13,5 +13,5 @@ import androidx.compose.runtime.Immutable
 data class LyricSegment(
     var startTime: Float,
     val text: String,
-    val duration: Float
+    var duration: Float
 )

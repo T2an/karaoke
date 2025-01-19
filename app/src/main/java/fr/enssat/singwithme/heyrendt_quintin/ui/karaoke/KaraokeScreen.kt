@@ -100,6 +100,11 @@ fun KaraokeScreen(
             viewModel.initializePlayer(soundtrackUrl)
         }
 
+//        song!!.lyricSegments.forEachIndexed { index, line ->
+//            Log.i("line", index.toString())
+//            Log.i("segments", line.toString())
+//        }
+
         if (isPlayerPlaying) {
             LaunchedEffect(currentLine) {
                 val currentSegments = song!!.lyricSegments[currentLine]
@@ -108,8 +113,10 @@ fun KaraokeScreen(
                 val startTime = currentSegments[0].startTime.toLong()
                 val delay = if (currentLine == 0) {
                     startTime
+                } else if(currentLine + 1 < song!!.lyricSegments.size) {
+                    song!!.lyricSegments[currentLine + 1][0].startTime.toLong() - (startTime + currentSegments.sumOf { it.duration.toLong() })
                 } else {
-                    song!!.lyricSegments[currentLine + 1][0].startTime.toLong() - (startTime + currentSegments[0].duration.toLong())
+                    0
                 }
                 delay(delay * 1000) // Attente avant le début de l'animation
 
@@ -118,11 +125,9 @@ fun KaraokeScreen(
                 // Calcul de la durée totale de la ligne
                 val totalLineDuration = currentSegments.sumOf { it.duration.toLong() }
 
-                // Animation de chaque segment
+                // Réinitialiser l'animation
+                karaokeAnimation.snapTo(0f)
                 for (segment in currentSegments) {
-                    // Réinitialiser l'animation
-                    karaokeAnimation.snapTo(0f)
-
                     val segmentEndProgress = (elapsedTime + segment.duration) / totalLineDuration
 
                     // Lancer l'animation avec progression fluide
@@ -136,9 +141,6 @@ fun KaraokeScreen(
 
                     // Mettre à jour le temps écoulé pour le prochain segment
                     elapsedTime += segment.duration
-
-                    // Attendre la durée du segment avant de passer au suivant
-                    delay((segment.duration * 1000).toLong())
                 }
 
                 // Passer à la ligne suivante après avoir animé tous les segments
@@ -155,10 +157,9 @@ fun KaraokeScreen(
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-
         topBar = {
             SingWithMeTopAppBar(
-                title = "Karaoké Player",
+                title = stringResource(KaraokeDestination.titleRes),
                 canNavigateBack = true,
                 scrollBehavior = scrollBehavior
             )
@@ -167,25 +168,28 @@ fun KaraokeScreen(
             FloatingActionButton(
                 onClick = {
                     viewModel.refreshSong(songPath)
-                    // TODO : Mettre plus de Toast sur HomeScreen
-                    Toast.makeText(context, context.getString(R.string.refresh), Toast.LENGTH_SHORT).show()
+                    viewModel.restartPlayer()
                 },
                 modifier = Modifier.padding(20.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.refresh)
+                    contentDescription = stringResource(R.string.refresh_song)
                 )
             }
         },
     ) { innerPadding ->
         if (isLoading) {
-            Text(
-                text = stringResource(R.string.loading),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = modifier.padding(innerPadding)
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.loading),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
         } else {
             KaraokeBody(
                 song = song,
@@ -211,12 +215,16 @@ fun KaraokeBody(
         modifier = modifier.padding(contentPadding),
     ) {
         if (song == null) {
-            Text(
-                text = stringResource(R.string.no_song_description),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(contentPadding)
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.no_song_description),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
         } else {
             KaraokeText(
                 list = song.lyrics,
@@ -226,85 +234,6 @@ fun KaraokeBody(
         }
     }
 }
-
-// TODO : Voir si temps
-//@Composable
-//fun KaraokeActionButtons() {
-//    val scope = rememberCoroutineScope()
-//
-//    Row(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .padding(PaddingValues(20.dp)),
-//        horizontalArrangement = Arrangement.SpaceEvenly
-//    ) {
-//        OutlinedIconButton(
-//            onClick = { goBack() },
-//            modifier = Modifier.size(50.dp),
-//            shape = CircleShape,
-//            border = BorderStroke(1.dp, Color.Black),
-//        ) {
-//            Icon(
-//                imageVector = Filled.ArrowBack,
-//                contentDescription = stringResource(R.string.back_button)
-//            )
-//        }
-//        OutlinedIconButton(
-//            onClick = { playOrPause(scope) },
-//            modifier = Modifier.size(50.dp),
-//            shape = CircleShape,
-//            border = BorderStroke(1.dp, Color.Black),
-//        ) {
-//            if (viewModel.a.isPlaying) {
-//                Icon(
-//                    imageVector = Filled.Pause,
-//                    contentDescription = stringResource(R.string.back_button)
-//                )
-//            } else {
-//                Icon(
-//                    imageVector = Filled.PlayArrow,
-//                    contentDescription = stringResource(R.string.back_button)
-//                )
-//            }
-//        }
-//        OutlinedIconButton(
-//            onClick = { replay() },
-//            modifier = Modifier.size(50.dp),
-//            shape = CircleShape,
-//            border = BorderStroke(1.dp, Color.Black),
-//        ) {
-//            Icon(
-//                imageVector = Filled.Refresh,
-//                contentDescription = stringResource(R.string.back_button)
-//            )
-//        }
-//    }
-//}
-
-//fun goBack() {
-//    audioPlayer.release()
-//    // TODO : Navigate to HomeScreen
-//}
-//
-//fun playOrPause(scope: CoroutineScope) {
-//    if (audioPlayer.isPlaying) {
-//        audioPlayer.pause()
-//        scope.launch {
-//            karaokeAnimation.stop()
-//        }
-//    } else {
-//        audioPlayer.play()
-//        scope.launch {
-//            karaokeAnimation.snapTo(karaokeAnimation.value)
-//            karaokeAnimation.animateTo(1f, tween(3000, easing = LinearEasing))
-//        }
-//    }
-//}
-//
-//fun replay() {
-//    audioPlayer.seekTo(0)
-//    audioPlayer.playWhenReady = true
-//}
 
 @Composable
 fun KaraokeText(list: List<String>, current: Int, progress: Float) {

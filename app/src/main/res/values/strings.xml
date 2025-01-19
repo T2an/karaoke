@@ -15,14 +15,15 @@
   -->
 <resources>
     <string name="app_name">Sing With Me</string>
+    <string name="base_url">https://gcpa-enssat-24-25.s3.eu-west-3.amazonaws.com</string>
+    <string name="playlist_file">playlist.json</string>
     <string name="back_button">Retour</string>
-    <string name="refresh">Actualiser la playlist</string>
+    <string name="refresh_playlist">Actualiser la playlist</string>
     <string name="loading">Chargement en cours…</string>
     <string name="available">Disponible</string>
     <string name="no_playlist_description">Aucune musique disponible,\nessayez d\'actualiser.</string>
+    <string name="karaoke_screen_title">Karaoké</string>
+    <string name="refresh_song">Actualiser la musique</string>
     <string name="song_not_available">Cette musique n\'est pas disponible pour le karaoké</string>
     <string name="no_song_description">La musique n\'est pas disponible,\nessayez d\'actualiser.</string>
-    <string name="base_url">https://gcpa-enssat-24-25.s3.eu-west-3.amazonaws.com</string>
-    <string name="playlist_file">playlist.json</string>
-    <string name="karaoke_screen_title">Karaoke Player</string>
 </resources>

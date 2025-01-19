@@ -1,5 +1,6 @@
 package fr.enssat.singwithme.heyrendt_quintin.util
 
+import android.util.Log
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.adapter
@@ -11,6 +12,7 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import kotlin.math.log
 
 /**
  * Classe utile pour le téléchargement et le parsing d'une musique
@@ -93,36 +95,53 @@ class SongUtil(private val songUrl: String) {
      * @return la liste des segments de paroles
      */
     private fun parseLyrics(rawLyrics: List<String>): List<List<LyricSegment>> {
-        val regex = Regex("\\{\\s*(\\d+:\\d+(\\.\\d+)?)\\s*\\}([^\\{]*)(\\{\\s*(\\d+:\\d+(\\.\\d+)?)\\s*\\})?")
-        // Regex pour extraire timestamps et texte
+        val regex = """\{ (\d+):(\d+)(?:\.(\d+))? \}""".toRegex() // Pour capturer les timestamps
+        val segments = mutableListOf<List<LyricSegment>>()
 
-        return rawLyrics.map { line -> // Traiter chaque ligne indépendamment
-            val segments = mutableListOf<LyricSegment>()
+        for (line in rawLyrics) {
             val matches = regex.findAll(line).toList()
+            val lyricSegments = mutableListOf<LyricSegment>()
 
-            for ((index, match) in matches.withIndex()) {
-                val startTimestamp = match.groups[1]?.value?.toFloatTime() ?: continue
-                val text = match.groups[3]?.value?.trim() ?: ""
-                val explicitEndTimestamp = match.groups[5]?.value?.toFloatTime()
+            for (i in matches.indices) {
+                val match = matches[i]
+                val startMinute = match.groupValues[1].toInt()
+                val startSecond = match.groupValues[2].toInt()
+                val startCenti = match.groupValues.getOrNull(3)?.toIntOrNull() ?: 0
 
-                // Déterminer le timestamp de fin
-                val endTimestamp = when {
-                    explicitEndTimestamp != null -> explicitEndTimestamp
-                    index + 1 < matches.size -> matches[index + 1].groups[1]?.value?.toFloatTime()
-                    else -> null
-                }
+                val startTime = startMinute * 60 + startSecond + (startCenti / 100f)
 
-                if (endTimestamp != null) {
-                    val duration = endTimestamp - startTimestamp
-                    segments.add(LyricSegment(startTime = startTimestamp, text = text, duration = duration))
-                } else {
-                    // Dernière ligne sans ligne suivante, durée par défaut
-                    segments.add(LyricSegment(startTime = startTimestamp, text = text, duration = 2f))
+                // Si on est au dernier timestamp, vérifier s'il y a un texte après le dernier
+                val isLastTimestamp = i == matches.size - 1
+                val endIndex = if (isLastTimestamp) line.length else matches[i + 1].range.first
+                val text = line.substring(match.range.last + 1, endIndex).trim()
+
+                // Ajouter le segment uniquement s'il y a du texte
+                if (text.isNotEmpty()) {
+                    lyricSegments.add(LyricSegment(startTime, text, -1f))
                 }
             }
 
-            segments // Retourner les segments pour cette ligne
+            if(lyricSegments.isNotEmpty()) segments.add(lyricSegments)
         }
+
+        // Calculer les durées restantes pour les segments
+        for (i in segments.indices) {
+            for (j in segments[i].indices) {
+                val current = segments[i][j]
+                val next = if (j + 1 < segments[i].size) {
+                    segments[i][j + 1]
+                } else if (i + 1 < segments.size && segments[i + 1].isNotEmpty()) {
+                    segments[i + 1].firstOrNull()
+                } else null
+
+                if (next != null) {
+                    // La durée est calculée à partir du startTime suivant
+                    current.duration = next.startTime - current.startTime
+                }
+            }
+        }
+
+        return segments
     }
 
     /**

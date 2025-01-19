@@ -91,7 +91,7 @@ fun HomeScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.refresh)
+                    contentDescription = stringResource(R.string.refresh_playlist)
                 )
             }
         }
