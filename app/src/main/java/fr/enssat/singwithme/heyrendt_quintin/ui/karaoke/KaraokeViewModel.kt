@@ -1,16 +1,18 @@
 package fr.enssat.singwithme.heyrendt_quintin.ui.karaoke
 
 import android.content.Context
-import android.util.Log
+import androidx.annotation.OptIn
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import fr.enssat.singwithme.heyrendt_quintin.data.Song
+import fr.enssat.singwithme.heyrendt_quintin.util.MediaCache
 import fr.enssat.singwithme.heyrendt_quintin.util.PreferencesManager
 import fr.enssat.singwithme.heyrendt_quintin.util.SongUtil
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,7 @@ import kotlinx.coroutines.launch
  * @param songUtil, l'instance de la classe utile des musiques
  * @param preferencesManager, l'instance de la classe de stockage des données
  */
+@OptIn(UnstableApi::class)
 class KaraokeViewModel(
     private val context: Context,
     private val songPath: String,
@@ -48,33 +51,33 @@ class KaraokeViewModel(
     private val _karaokeAnimation = MutableStateFlow(Animatable(0f))
     val karaokeAnimation: StateFlow<Animatable<Float, AnimationVector1D>> get() = _karaokeAnimation
 
+    init {
+        initSong()
+    }
+
+    /**
+     * Initialise le lecteur audio ExoPlayer
+     */
     fun initializePlayer(soundtrackUrl: String) {
         val player = ExoPlayer.Builder(context).build()
-        // TODO : Cache mp3 marche pas
-        // val mediaSource = ProgressiveMediaSource.Factory(cacheDataSourceFactory)
-        // .createMediaSource(mediaItem)
-        //  setMediaSource(mediaSource)
-        player.setMediaItem(MediaItem.fromUri(soundtrackUrl))
+
+        // Initialise la source MP3
+        val mediaItem = MediaItem.fromUri(soundtrackUrl)
+
+        // Configure la gestion du cache
+        val cacheDataSourceFactory = MediaCache.createCacheDataSourceFactory(context)
+        val mediaSource = DefaultMediaSourceFactory(cacheDataSourceFactory)
+            .createMediaSource(mediaItem)
+
+        player.setMediaSource(mediaSource)
         player.prepare()
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlayerPlaying.value = isPlaying
             }
-
-            override fun onPlayerError(error: PlaybackException) {
-                Log.e("ExoPlayer", "Playback error: ${error.message}")
-            }
         })
         _audioPlayer.value = player
         _audioPlayer.value!!.play()
-    }
-
-    fun releasePlayer() {
-        _audioPlayer.value?.release()
-    }
-
-    init {
-        initSong()
     }
 
     /**

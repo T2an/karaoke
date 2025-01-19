@@ -149,7 +149,7 @@ fun KaraokeScreen(
 
     DisposableEffect(Unit) {
         onDispose {
-            viewModel.releasePlayer()
+            audioPlayer?.release()
         }
     }
 
